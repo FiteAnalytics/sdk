@@ -5,7 +5,7 @@
 This document details how to use the SDK to interact with Fite Analytics' services. Please refer to this document as the definitive
 source of information.
 
-For questions or comments please contact us [via email](mailto:info@fiteanalytics.com) or on [reddit](https://reddit.com/fiteanalytics).
+For questions or comments please contact us [via email](mailto:info@fiteanalytics.com) or on [reddit](https://www.reddit.com/r/fiteanalytics/).
 
 ## Python SDK
 
