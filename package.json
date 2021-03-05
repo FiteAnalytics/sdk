@@ -1,0 +1,12 @@
+{
+  "name": "sdk",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "process": "^0.11.10"
+  },
+  "devDependencies": {
+    "axios": "^0.21.1",
+    "dotenv": "^8.2.0"
+  }
+}
