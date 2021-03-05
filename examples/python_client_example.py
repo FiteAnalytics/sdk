@@ -5,7 +5,7 @@ from os import path
 sys.path.append(path.join(path.dirname(__file__), '..'))
 from finx_api.finx import FinX
 
-finx = FinX()
+finx = FinX('finx_api/finx_config.yml')
 
 print('\n*********** API methods ***********')
 api_methods = finx.get_api_methods()

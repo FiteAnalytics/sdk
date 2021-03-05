@@ -1,6 +1,6 @@
 import FinX from "../finx_api/finx.js";
 
-let finx = FinX();
+let finx = FinX('finx_api/finx_config.yml');
 
 finx.get_api_methods().then(data => {
     console.log('\n*********** API methods ***********');

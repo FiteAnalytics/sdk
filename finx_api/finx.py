@@ -1,33 +1,35 @@
 #! Python
 import os
-import json
+import yaml
 import dotenv
 import requests
 
 
 class FinX:
-	api_url = 'https://sandbox.finx.io/api/'
+	api_url = None
 	session = None
 	request_body = {}
 
-	def __init__(self, api_key=None, json_path=None, env_path=None):
+	def __init__(self, config_path=None, env_path=None):
 		"""
-		Client constructor accepts 4 distinct methods for securely passing credentials:
-		1. api_key: string literal
-		2. json_path: path to JSON file containing the key "finx_api_key"
-		3. env_path: path to .env file containing the key "finx_api_key"
-		4. environment variable: exported environment variable named "api_key". Default if no args passed
+		Client constructor accepts 3 distinct methods for passing credentials named FINX_API_KEY and FINX_API_ENDPOINT
+		1. config_path: path to YAML file
+		2. env_path: path to .env file
+		If neither argument specified, looks for the parameters in environment variables.
 		"""
-		if api_key is not None:
-			self.api_key = api_key
-		elif json_path is not None:
-			config = json.load(json_path)
-			self.api_key = config['api_key']
+		if config_path is not None:
+			config = yaml.safe_load(open(config_path))
+			self.api_key = config.get('FINX_API_KEY')
+			self.api_url = config.get('FINX_API_ENDPOINT')
 		else:
 			if env_path is not None:
 				dotenv.load_dotenv(env_path)
-			self.api_key = os.getenv('API_KEY')
-		assert self.api_key is not None
+			self.api_key = os.getenv('FINX_API_KEY')
+			self.api_url = os.getenv('FINX_API_ENDPOINT')
+		if self.api_key is None:
+			raise Exception('API key not found')
+		if self.api_url is None:
+			self.api_url = 'https://sandbox.finx.io/api/'
 		self.session = requests.session()
 
 	def dispatch(self):
