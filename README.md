@@ -7,6 +7,30 @@ source of information.
 
 For questions or comments please contact us [via email](mailto:info@fiteanalytics.com) or on [reddit](https://www.reddit.com/r/fiteanalytics/).
 
+## FinX API SDK
+The FinX API is a RESTful API endpoint offering rich fixed income analytics calculations, including projected cash flows, interest rate risk metrics and more. The Fite Analytics SDK offers a client class implementation for a variety of programming languages to access the API methods. Unless specified otherwise, each language's client implementation consist of only one file containing all the necessary code to expose all API functions.
+
+The FinX API requires an API key for usage. You may also be provided with a specific URL for accessing the serveices. Please contact [via email](mailto:info@fiteanalytics.com) to obtain your key. We require three fields to validate your credentials: `VERSION`, `FINX_API_KEY` and `FINX_API_ENDPOINT`. Note that these keys are case sensitive and must be observed precisely. The SDK facilitates two distinct methods for securely passing credentials to the API clients.
+
+The first method is via a YAML configuration file containing your credentials. You may give the path to this file when initializing the client:
+#### YAML configuration syntax
+```
+# Fite Analytics Configuration
+VERSION: 1
+FINX_API_KEY: my_finx_key
+FINX_API_ENDPOINT: https://api.finx.io
+```
+
+The second method is via a .env file containing the required keys. If a .env file is specified, all the variables in the file are loaded into the local environment.
+#### .env file syntax
+```
+VERSION=1
+FINX_API_KEY=my_finx_key
+FINX_API_ENDPOINT=https://api.finx.io
+```
+
+If no YAML file is specified, the SDK will extract the required variables from the environment, including those loaded from the .env file if specified.
+
 ## Python SDK
 
 The Python SDK is a python package that contains various functions to interact with the Fite Analtyics cloud platform.
@@ -15,25 +39,9 @@ The Python SDK is a python package that contains various functions to interact w
 
 ### Using Python SDK
 
-The python SDK package contains 2 files: a python library (fiteanalytics.py) and a configuration file (fiteanalytics.yml). You must populate the 
-fiteanalytics.config configuration file with your particular information.
-
 Once the configuration file is edited and saved, you may import the python library into your command line or python application. The location of the configuration 
 by default is alongside the python package in the same directory, but you may change the location of the configuration file with a function in the library itself.
 
-### fiteanalytics.cfg configuration file
-
-The configuration file is YAML and controls the variables used by the python library.
-
-#### configuration file syntax
-
-##### fiteanalytics.yml
-```
-# Fite Analytics Configuration
-- version: 1
-- finx_api_key: my_finx_key
-- finx_api_endpoint: https://api.finx.io
-```
 
 ### fiteanalytics.py python package
 
