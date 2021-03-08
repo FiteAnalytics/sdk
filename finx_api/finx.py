@@ -6,41 +6,43 @@ import requests
 
 
 class FinX:
-	api_url = None
+	__api_url = None
+	__request_body = {}
 	session = None
-	request_body = {}
 
-	def __init__(self, config_path=None, env_path=None):
+	def __init__(self, **kwargs):
 		"""
 		Client constructor accepts 3 distinct methods for passing credentials named FINX_API_KEY and FINX_API_ENDPOINT
 		1. config_path: path to YAML file
 		2. env_path: path to .env file
-		If neither argument specified, looks for the parameters in environment variables.
+		If yaml_path not passed, loads env_path (if passed) then checks environment variables
 		"""
-		if config_path is not None:
-			config = yaml.safe_load(open(config_path))
-			self.api_key = config.get('FINX_API_KEY')
-			self.api_url = config.get('FINX_API_ENDPOINT')
+		yaml_path = kwargs.get('yaml_path')
+		if yaml_path is not None:
+			config = yaml.safe_load(open(yaml_path))
+			self.__api_key = config.get('FINX_API_KEY')
+			self.__api_url = config.get('FINX_API_ENDPOINT')
 		else:
+			env_path = kwargs.get('env_path')
 			if env_path is not None:
 				dotenv.load_dotenv(env_path)
-			self.api_key = os.getenv('FINX_API_KEY')
-			self.api_url = os.getenv('FINX_API_ENDPOINT')
-		if self.api_key is None:
+			self.__api_key = os.getenv('FINX_API_KEY')
+			self.__api_url = os.getenv('FINX_API_ENDPOINT')
+		if self.__api_key is None:
 			raise Exception('API key not found')
-		if self.api_url is None:
-			self.api_url = 'https://sandbox.finx.io/api/'
+		if self.__api_url is None:
+			self.__api_url = 'https://sandbox.finx.io/api/'
 		self.session = requests.session()
 
 	def dispatch(self):
-		return self.session.post(self.api_url, data=self.request_body).json()
+		return self.session.post(self.__api_url, data=self.__request_body).json()
 
 	def get_api_methods(self):
 		"""
 		List API methods with parameter specifications
 		"""
-		self.request_body = {
-			'finx_api_key': self.api_key,
+		self.__request_body = {
+			'finx_api_key': self.__api_key,
 			'api_method': 'list_api_functions'
 		}
 		return self.dispatch()
@@ -52,8 +54,8 @@ class FinX:
 		:param as_of_date: string as YYYY-MM-DD (optional)
 		:return:
 		"""
-		self.request_body = {
-			'finx_api_key': self.api_key,
+		self.__request_body = {
+			'finx_api_key': self.__api_key,
 			'api_method': 'security_reference',
 			'security_id': security_id,
 			'as_of_date': as_of_date
@@ -83,8 +85,8 @@ class FinX:
 		:param cap_gain_short_tax: float (optional)
 		:param cap_gain_long_tax: float (optional)
 		"""
-		self.request_body = {
-			'finx_api_key': self.api_key,
+		self.__request_body = {
+			'finx_api_key': self.__api_key,
 			'api_method': 'security_analytics',
 			'security_id': security_id,
 			'as_of_date': as_of_date,
@@ -107,8 +109,8 @@ class FinX:
 		:param price: float (optional)
 		:param shock_in_bp: int (optional)
 		"""
-		self.request_body = {
-			'finx_api_key': self.api_key,
+		self.__request_body = {
+			'finx_api_key': self.__api_key,
 			'api_method': 'security_cash_flows',
 			'security_id': security_id,
 			'as_of_date': as_of_date,
