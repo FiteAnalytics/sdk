@@ -1,14 +1,11 @@
 #! Python
-import sys
-from os import path
-sys.path.append(path.join(path.dirname(__file__), '..'))
 from finx_api.finx import FinX
 
 # Initialize client
-finx = FinX(yaml_path='finx_api/finx_config.yml')
+finx = FinX(yaml_path='../finx_config.yml')
 
 # Get API methods
-print('\n*********** API methods ***********')
+print('\n*********** API Methods ***********')
 api_methods = finx.get_api_methods()
 print(api_methods)
 
