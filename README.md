@@ -30,18 +30,35 @@ FINX_API_ENDPOINT=https://api.finx.io
 
 ### SDK Installation
 
-For the immediate future, please clone this repository into your project to begin using the SDK.
+For the time being, please clone this repository into your project to begin using the SDK.
 ```
-git clone https://github.com/FiteAnalytics/sdk
+$ git clone https://github.com/FiteAnalytics/sdk
+```
+### Quickstart
+
+To see the SDK in action, we've included example scripts for each implementation
+
+#### Node.js
+```
+$ cd ~/sdk/node
+$ node node_client_example.js
+```
+
+#### Python
+```
+$ cd ~/sdk/python
+$ python3 python_client_example.py
 ```
 
 ### Python SDK
 
-The Python SDK is implemented as a wrapper class with member functions for invoking the various API methods. We have included an example script demonstrating
-how to use the client:
+The Python SDK is implemented as a wrapper class with member functions for invoking the various API methods. Optional 
+arguments for the security analytics and security cash flows functions must be specified as key word arguments.
+
+Ensure you have installed the required packages listed in requirements.txt:
 ```
-cd sdk/python
-python3 python_client_example.py
+$ cd ~/sdk/python
+$ pip3 install -r requirements.txt
 ```
 
 #### Initialization
@@ -57,6 +74,8 @@ Returns a class object with member functions for invoking the various API method
 
 ##### Example
 ```
+$ python3
+...
 >>> from finx_api.finx import FinX
 
 # YAML configuration file
@@ -254,12 +273,8 @@ key words are not natively supported by javascript.
 
 Ensure you have installed the packages listed in package.json:
 ```
-npm install
-```
-We have included an example script demonstrating how to use the client:
-```
-cd sdk/javascript
-node javascript_client_example.py
+$ cd ~/sdk/node
+$ npm install
 ```
 
 #### Initialization
@@ -300,6 +315,7 @@ A object mapping each available API method to their respective required and opti
 ##### Example
 ```
 finx.get_api_methods().then(data => console.log(data));
+
 {
   hello_world: { required: [ 'my_name' ], optional: [ 'my_favorite_animal' ] },
   security_reference: { required: [ 'security_id' ], optional: [ 'as_of_date' ] },
@@ -343,6 +359,7 @@ An object containing various descriptive fields for the specified security
 ##### Example
 ```
 finx.get_security_reference_data('USQ98418AH10', '2020-09-14').then(data => console.log(data));
+
 {
   security_id: 'USQ98418AH10',
   as_of_date: '2020-09-14',
@@ -389,6 +406,7 @@ An object containing various fixed income risk analytics measures for the specif
 ##### Example
 ```
 finx.get_security_analytics('USQ98418AH10', {as_of_date: '2020-09-14', price: 100}).then(data => console.log(data));
+
 {
   security_id: 'USQ98418AH10',
   as_of_date: '2020-09-14T00:00:00Z',
@@ -445,6 +463,7 @@ An object containing a vector time series of cash flow dates and corresponding a
 ##### Example
 ```
 finx.get_security_cash_flows('USQ98418AH10', {as_of_date: '2020-09-14', price: 100}).then(data => console.log(data));
+
 {
   security_id: 'USQ98418AH10',
   as_of_date: '2020-09-14',
