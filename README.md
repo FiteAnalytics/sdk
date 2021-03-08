@@ -264,7 +264,7 @@ Returns a class object with member functions for invoking the various API method
 
 ##### Example
 ```
-import FinX from "../finx_api/finx.js";
+import FinX from "finx_api/finx.js";
 
 // YAML configuration
 let finx = FinX('finx_api/finx_config.yml');
