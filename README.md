@@ -13,6 +13,7 @@ The FinX API is a RESTful API endpoint offering rich fixed income analytics calc
 The FinX API requires an API key for usage. You may also be provided with a specific URL for accessing services. Please contact us [via email](mailto:info@fiteanalytics.com) to obtain your key. We require three fields to validate your credentials: `VERSION`, `FINX_API_KEY` and `FINX_API_ENDPOINT`. Note that these keys are case sensitive. The SDK facilitates two distinct methods for securely passing credentials to the API clients.
 
 The first method is via a YAML configuration file containing your credentials. You may give the path to this file when initializing the client:
+
 ### YAML configuration syntax
 ```
 VERSION: 1
@@ -36,7 +37,12 @@ git clone https://github.com/FiteAnalytics/sdk
 
 ### Python SDK
 
-The Python SDK is implemented as a wrapper class with member functions for invoking the various API methods.
+The Python SDK is implemented as a wrapper class with member functions for invoking the various API methods. We have included an example script demonstrating
+how to use the client:
+```
+cd sdk/python
+python3 python_client_example.py
+```
 
 #### Initialization
 
@@ -249,6 +255,11 @@ key words are not natively supported by javascript.
 Ensure you have installed the packages listed in package.json:
 ```
 npm install
+```
+We have included an example script demonstrating how to use the client:
+```
+cd sdk/javascript
+node javascript_client_example.py
 ```
 
 #### Initialization
