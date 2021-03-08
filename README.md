@@ -15,7 +15,6 @@ The FinX API requires an API key for usage. You may also be provided with a spec
 The first method is via a YAML configuration file containing your credentials. You may give the path to this file when initializing the client:
 #### YAML configuration syntax
 ```
-# Fite Analytics Configuration
 VERSION: 1
 FINX_API_KEY: my_finx_key
 FINX_API_ENDPOINT: https://api.finx.io
@@ -28,23 +27,63 @@ FINX_API_KEY=my_finx_key
 FINX_API_ENDPOINT=https://api.finx.io
 ```
 
+## SDK Installation
+
+For the immediate future, please clone this repository into your project to begin using the SDK.
+```
+git clone https://github.com/FiteAnalytics/sdk
+```
+
 ## Python SDK
 
-The Python SDK is a python package that contains various functions to interact with the Fite Analtyics cloud platform.
+The Python SDK is implemented as a wrapper class with member functions for invoking the various API methods.
 
-### Installing Python SDK
+#### Initialization
 
-### Using Python SDK
+##### Inputs
 
-Once the configuration file is edited and saved, you may import the python library into your command line or python application. The location of the configuration 
-by default is alongside the python package in the same directory, but you may change the location of the configuration file with a function in the library itself.
+1. YAML configuration file formatted as described above (optional)
+2. .env file formatted as described above (optional)
 
+##### Syntax
 
-### fiteanalytics.py python package
+```
+from finx_api.finx import FinX
 
-The fiteanalytics.py package contains various functions for interacting with the Fite Analytics platform.
+# YAML configuration file
+finx = FinX(yaml_path='path/to/file.yml')
 
-#### hello world
+# .env file
+finx = FinX(env_path='path/to/.env')
+
+# No file (will check environment variables)
+finx = FinX()
+```
+##### Output
+
+Returns a class object with member functions for invoking the various API methods
+
+#### Get API Methods
+
+##### Inputs
+
+None
+
+##### Syntax
+
+fiteanalytics.hello_world()
+
+###### example
+
+```
+> import fiteanalytics
+>
+> fiteanalytics.hello_world()
+> 
+> hello from fiteanalytics
+```
+
+#### Security Reference
 
 ##### inputs
 
@@ -63,8 +102,6 @@ fiteanalytics.hello_world()
 > 
 > hello from fiteanalytics
 ```
-
-#### security reference
 
 #### security analytics
 
