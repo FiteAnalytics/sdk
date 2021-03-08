@@ -12,7 +12,7 @@ class FinX:
 
 	def __init__(self, **kwargs):
 		"""
-		Client constructor accepts 3 distinct methods for passing credentials named FINX_API_KEY and FINX_API_ENDPOINT
+		Client constructor accepts 2 distinct methods for passing credentials named FINX_API_KEY and FINX_API_ENDPOINT
 		1. config_path: path to YAML file
 		2. env_path: path to .env file
 		If yaml_path not passed, loads env_path (if passed) then checks environment variables
@@ -25,7 +25,10 @@ class FinX:
 		else:
 			env_path = kwargs.get('env_path')
 			if env_path is not None:
-				dotenv.load_dotenv(env_path)
+				try:
+					dotenv.load_dotenv(env_path)
+				except:
+					print(f'Could not load .env file at {env_path}')
 			self.__api_key = os.getenv('FINX_API_KEY')
 			self.__api_url = os.getenv('FINX_API_ENDPOINT')
 		if self.__api_key is None:

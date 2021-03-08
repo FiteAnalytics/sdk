@@ -6,7 +6,8 @@ function FinX(yaml_path=null, env_path=null) {
     var api_key = null,
         api_url = null;
     if (yaml_path != null) {
-        const fileContents = fs.readFileSync(yaml_path, 'utf8'), config = yaml.load(fileContents);
+        const fileContents = fs.readFileSync(yaml_path, 'utf8'),
+            config = yaml.load(fileContents);
         api_key = config['FINX_API_KEY'];
         api_url = config['FINX_API_ENDPOINT'];
     }
