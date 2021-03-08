@@ -7,9 +7,9 @@
       <sourceFolder url="file://$MODULE_DIR$/finx_api/examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/finx_api" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/python" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/javascript" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/node" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/python/finx_api" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/javascript/finx_api" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/node/finx_api" isTestSource="false" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
