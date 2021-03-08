@@ -107,8 +107,10 @@ A object mapping each available API method to their respective required and opti
 
 ##### Inputs
 
+```
 :param security_id: string
 :param as_of_date: string as YYYY-MM-DD (optional)
+```
 
 ##### Output
 
