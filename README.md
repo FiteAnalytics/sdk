@@ -243,8 +243,13 @@ An object containing a vector time series of cash flow dates and corresponding a
 
 The Javascript SDK is similarly implemented as a wrapper class with member functions for invoking the various API 
 methods, however, all methods are implemented as asynchronous functions and must used accordingly. Key word arguments 
-must be specified within a single map object argument for the security analytics and security cash flows functions since
+must be specified using a map object argument for the security analytics and security cash flows functions since
 key words are not natively supported by javascript.
+
+Ensure you have installed the packages listed in package.json:
+```
+npm install
+```
 
 #### Initialization
 
