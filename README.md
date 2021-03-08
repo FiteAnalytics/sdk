@@ -45,8 +45,11 @@ The Python SDK is implemented as a wrapper class with member functions for invok
 1. YAML configuration file formatted as described above (optional)
 2. .env file formatted as described above (optional)
 
-##### Syntax
+##### Output
 
+Returns a class object with member functions for invoking the various API methods
+
+##### Example
 ```
 from finx_api.finx import FinX
 
@@ -59,9 +62,6 @@ finx = FinX(env_path='path/to/.env')
 # No file (will check environment variables)
 finx = FinX()
 ```
-##### Output
-
-Returns a class object with member functions for invoking the various API methods
 
 #### Get API Methods
 
@@ -69,19 +69,16 @@ Returns a class object with member functions for invoking the various API method
 
 None
 
-##### Syntax
+##### Output
 
-fiteanalytics.hello_world()
+An array of objects with descriptions of each available API method, including required and optional parameters
 
-###### example
-
+##### Example
 ```
-> import fiteanalytics
->
-> fiteanalytics.hello_world()
-> 
-> hello from fiteanalytics
+>>> finx.get_api_methods()
+>>> {'hello_world': {'required': ['my_name'], 'optional': ['my_favorite_animal']}, 'security_reference': {'required': ['security_id'], 'optional': ['as_of_date']}, 'security_analytics': {'required': ['security_id'], 'optional': ['price', 'as_of_date', 'volatility', 'yield_shift', 'shock_in_bp', 'horizon_months', 'income_tax', 'cap_gain_short_tax', 'cap_gain_long_tax', 'use_kalotay_analytics']}, 'security_cash_flows': {'required': ['security_id'], 'optional': ['as_of_date', 'price', 'shock_in_bp']}, 'get_account_info': {'required': ['finx_api_key', 'target_finx_api_key'], 'optional': ['as_of_date']}, 'list_api_keys': {'required': ['finx_api_key'], 'optional': ['as_of_date']}, 'list_api_functions': {'required': [], 'optional': []}, 'get_api_usage': {'required': ['finx_api_key'], 'optional': ['target_finx_api_key', 'as_of_date']}}
 ```
+
 
 #### Security Reference
 
