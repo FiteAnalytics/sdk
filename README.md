@@ -76,30 +76,30 @@ A object mapping each available API method to their respective required and opti
 ##### Example
 ```
 >>> finx.get_api_methods()
->>> {
-      hello_world: { required: [ 'my_name' ], optional: [ 'my_favorite_animal' ] },
-      security_reference: { required: [ 'security_id' ], optional: [ 'as_of_date' ] },
-      security_analytics: {
-        required: [ 'security_id' ],
-        optional: [
-          'price',
-          'as_of_date',
-          'volatility',
-          'yield_shift',
-          'shock_in_bp',
-          'horizon_months',
-          'income_tax',
-          'cap_gain_short_tax',
-          'cap_gain_long_tax',
-          'use_kalotay_analytics'
-        ]
-      },
-      security_cash_flows: {
-        required: [ 'security_id' ],
-        optional: [ 'as_of_date', 'price', 'shock_in_bp' ]
-      },
-      list_api_functions: { required: [], optional: [] },
-    }
+{
+  hello_world: { required: [ 'my_name' ], optional: [ 'my_favorite_animal' ] },
+  security_reference: { required: [ 'security_id' ], optional: [ 'as_of_date' ] },
+  security_analytics: {
+    required: [ 'security_id' ],
+    optional: [
+      'price',
+      'as_of_date',
+      'volatility',
+      'yield_shift',
+      'shock_in_bp',
+      'horizon_months',
+      'income_tax',
+      'cap_gain_short_tax',
+      'cap_gain_long_tax',
+      'use_kalotay_analytics'
+    ]
+  },
+  security_cash_flows: {
+    required: [ 'security_id' ],
+    optional: [ 'as_of_date', 'price', 'shock_in_bp' ]
+  },
+  list_api_functions: { required: [], optional: [] },
+}
 ```
 
 
@@ -117,26 +117,26 @@ An object containing various descriptive fields for the specified security
 ##### Example
 ```
 >>> finx.get_security_reference_data('USQ98418AH10', '2020-09-14')
->>> {
-      security_id: 'USQ98418AH10',
-      as_of_date: '2020-09-14',
-      security_name: null,
-      asset_class: 'bond',
-      security_type: 'corporate',
-      government_type: null,
-      corporate_type: null,
-      municipal_type: null,
-      structured_type: null,
-      mbspool_type: null,
-      currency: 'USD',
-      maturity_date: '2020-09-22T00:00:00Z',
-      issue_date: '2010-09-22T00:00:00Z',
-      issuer_name: 'Woolworths Group Limited',
-      current_coupon: 4,
-      has_optionality: false,
-      has_sinking_schedule: false,
-      has_floating_rate: false
-    }
+{
+  security_id: 'USQ98418AH10',
+  as_of_date: '2020-09-14',
+  security_name: null,
+  asset_class: 'bond',
+  security_type: 'corporate',
+  government_type: null,
+  corporate_type: null,
+  municipal_type: null,
+  structured_type: null,
+  mbspool_type: null,
+  currency: 'USD',
+  maturity_date: '2020-09-22T00:00:00Z',
+  issue_date: '2010-09-22T00:00:00Z',
+  issuer_name: 'Woolworths Group Limited',
+  current_coupon: 4,
+  has_optionality: false,
+  has_sinking_schedule: false,
+  has_floating_rate: false
+}
 ```
 
 #### Get Security Analytics
@@ -161,42 +161,42 @@ An object containing various fixed income risk analytics measures for the specif
 ##### Example
 ```
 >>> finx.get_security_analytics(security_id='USQ98418AH10', as_of_date='2020-09-14', price=100)
->>> {
-      security_id: 'USQ98418AH10',
-      as_of_date: '2020-09-14T00:00:00Z',
-      price: 100,
-      convexity_par: 0.0002,
-      dur_to_worst: 0.0218,
-      dur_to_worst_ann: 0.0214,
-      eff_dur_par: 0.0222,
-      eff_dur_spot: 0.0222,
-      local_dur: 0.0214,
-      macaulay_dur: 0.0222,
-      macaulay_dur_to_worst: 0.0222,
-      modified_dur: 0.0218,
-      modified_dur_ann: 0.0214,
-      libor_oas: 0.0369,
-      oas: 0.0382,
-      yield_to_maturity_ann: 0.04,
-      yield_to_option: 0.0396,
-      yield_value_32: 0.014,
-      spread_dur: 0.0222,
-      accrued_interest: 1.9111,
-      asset_swap_spread: 0.0373,
-      average_life: 0.022222222222222195,
-      coupon_rate: 4,
-      current_yield: 0.04,
-      discount_margin: -9999,
-      convexity_spot: 0.0002,
-      dv01: 0.0002,
-      maturity_years: 0.0222,
-      nominal_spread: 0.0386,
-      stated_maturity_years: 0.0222,
-      yield_to_maturity: 0.0396,
-      yield_to_put: 0.0396,
-      annual_yield: 0.0404,
-      zvo: 0.0382
-    }
+{
+  security_id: 'USQ98418AH10',
+  as_of_date: '2020-09-14T00:00:00Z',
+  price: 100,
+  convexity_par: 0.0002,
+  dur_to_worst: 0.0218,
+  dur_to_worst_ann: 0.0214,
+  eff_dur_par: 0.0222,
+  eff_dur_spot: 0.0222,
+  local_dur: 0.0214,
+  macaulay_dur: 0.0222,
+  macaulay_dur_to_worst: 0.0222,
+  modified_dur: 0.0218,
+  modified_dur_ann: 0.0214,
+  libor_oas: 0.0369,
+  oas: 0.0382,
+  yield_to_maturity_ann: 0.04,
+  yield_to_option: 0.0396,
+  yield_value_32: 0.014,
+  spread_dur: 0.0222,
+  accrued_interest: 1.9111,
+  asset_swap_spread: 0.0373,
+  average_life: 0.022222222222222195,
+  coupon_rate: 4,
+  current_yield: 0.04,
+  discount_margin: -9999,
+  convexity_spot: 0.0002,
+  dv01: 0.0002,
+  maturity_years: 0.0222,
+  nominal_spread: 0.0386,
+  stated_maturity_years: 0.0222,
+  yield_to_maturity: 0.0396,
+  yield_to_put: 0.0396,
+  annual_yield: 0.0404,
+  zvo: 0.0382
+}
 ```
 
 #### Get Security Cash Flows
@@ -215,22 +215,22 @@ An object containing a vector time series of cash flow dates and corresponding a
 ##### Example
 ```
 >>> finx.get_security_cash_flows(security_id='USQ98418AH10', as_of_date='2020-09-14', price=100)
->>> {
-      security_id: 'USQ98418AH10',
-      as_of_date: '2020-09-14',
-      cash_flows: [
-        {
-          total_cash_flows: 102,
-          interest_cash_flows: 2,
-          other_principal_cash_flows: 0,
-          principal_cash_flows: 100,
-          call_cash_flows: 0,
-          put_cash_flows: 0,
-          accrued_interest: 0,
-          cash_flow_date: '2020-09-22'
-        }
-      ]
+{
+  security_id: 'USQ98418AH10',
+  as_of_date: '2020-09-14',
+  cash_flows: [
+    {
+      total_cash_flows: 102,
+      interest_cash_flows: 2,
+      other_principal_cash_flows: 0,
+      principal_cash_flows: 100,
+      call_cash_flows: 0,
+      put_cash_flows: 0,
+      accrued_interest: 0,
+      cash_flow_date: '2020-09-22'
     }
+  ]
+}
 ```
 
 ## Javascript SDK
@@ -275,7 +275,6 @@ A object mapping each available API method to their respective required and opti
 ##### Example
 ```
 finx.get_api_methods().then(data => console.log(data));
-
 {
   hello_world: { required: [ 'my_name' ], optional: [ 'my_favorite_animal' ] },
   security_reference: { required: [ 'security_id' ], optional: [ 'as_of_date' ] },
@@ -317,7 +316,6 @@ An object containing various descriptive fields for the specified security
 ##### Example
 ```
 finx.get_security_reference_data('USQ98418AH10', '2020-09-14').then(data => console.log(data));
-
 {
   security_id: 'USQ98418AH10',
   as_of_date: '2020-09-14',
@@ -362,7 +360,6 @@ An object containing various fixed income risk analytics measures for the specif
 ##### Example
 ```
 finx.get_security_analytics('USQ98418AH10', '2020-09-14').then(data => console.log(data));
-
 {
   security_id: 'USQ98418AH10',
   as_of_date: '2020-09-14T00:00:00Z',
@@ -417,7 +414,6 @@ An object containing a vector time series of cash flow dates and corresponding a
 ##### Example
 ```
 finx.get_security_cash_flows('USQ98418AH10', '2020-09-14', 100).then(data => console.log(data));
-
 {
   security_id: 'USQ98418AH10',
   as_of_date: '2020-09-14',
