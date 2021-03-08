@@ -8,9 +8,9 @@ source of information.
 For questions or comments please contact us [via email](mailto:info@fiteanalytics.com) or on [reddit](https://www.reddit.com/r/fiteanalytics/).
 
 ## FinX API SDK
-The FinX API is a RESTful API endpoint offering rich fixed income analytics calculations, including projected cash flows, interest rate risk metrics and more. The Fite Analytics SDK offers a client class implementation for a variety of programming languages to access the API methods. Unless specified otherwise, each language's client implementation consist of only one file containing all the necessary code to expose all API functions.
+The FinX API is a RESTful API endpoint offering rich fixed income analytics calculations, including security reference data, interest rate risk metrics, and projected cash flows. The Fite Analytics SDK offers a client class implementation for a variety of programming languages to wrap access to the API methods. Unless specified otherwise, each language's client implementation consist solely of one implementation file containing all the necessary code to expose the API functions.
 
-The FinX API requires an API key for usage. You may also be provided with a specific URL for accessing the serveices. Please contact [via email](mailto:info@fiteanalytics.com) to obtain your key. We require three fields to validate your credentials: `VERSION`, `FINX_API_KEY` and `FINX_API_ENDPOINT`. Note that these keys are case sensitive and must be observed precisely. The SDK facilitates two distinct methods for securely passing credentials to the API clients.
+The FinX API requires an API key for usage. You may also be provided with a specific URL for accessing services. Please contact us [via email](mailto:info@fiteanalytics.com) to obtain your key. We require three fields to validate your credentials: `VERSION`, `FINX_API_KEY` and `FINX_API_ENDPOINT`. Note that these keys are case sensitive. The SDK facilitates two distinct methods for securely passing credentials to the API clients.
 
 The first method is via a YAML configuration file containing your credentials. You may give the path to this file when initializing the client:
 #### YAML configuration syntax
@@ -20,16 +20,13 @@ VERSION: 1
 FINX_API_KEY: my_finx_key
 FINX_API_ENDPOINT: https://api.finx.io
 ```
-
-The second method is via a .env file containing the required keys. If a .env file is specified, all the variables in the file are loaded into the local environment.
+The second method looks for the required credentials in environment variables. If a .env file is specified in the client initialization, the .env file will be loaded before checking the variables.
 #### .env file syntax
 ```
 VERSION=1
 FINX_API_KEY=my_finx_key
 FINX_API_ENDPOINT=https://api.finx.io
 ```
-
-If no YAML file is specified, the SDK will extract the required variables from the environment, including those loaded from the .env file if specified.
 
 ## Python SDK
 
