@@ -47,10 +47,10 @@ function FinX(yaml_path=null, env_path=null) {
             finx_api_key: api_key,
             api_method: 'security_reference',
             security_id: security_id,
-		};
+        };
         if (as_of_date != null)
             request_body['as_of_date'] = as_of_date;
-		return await dispatch();
+        return await dispatch();
     }
 
     async function get_security_analytics(security_id,
@@ -91,17 +91,17 @@ function FinX(yaml_path=null, env_path=null) {
 
     async function get_security_cash_flows(security_id, as_of_date=null, price=null, shock_in_bp=null) {
         request_body = {
-			finx_api_key: api_key,
-			api_method: 'security_cash_flows',
+            finx_api_key: api_key,
+            api_method: 'security_cash_flows',
             security_id: security_id
-		};
+        };
         if (as_of_date != null)
             request_body['as_of_date'] = as_of_date;
         if (price != null)
             request_body['price'] = price;
         if (shock_in_bp != null)
             request_body['shock_in_bp'] = shock_in_bp;
-		return await dispatch();
+        return await dispatch();
     }
 
     return {
