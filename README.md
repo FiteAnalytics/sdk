@@ -107,8 +107,8 @@ A object mapping each available API method to their respective required and opti
 
 ##### Inputs
 
-1. security_id (string) (required)
-2. as_of_date (string as YYYY-MM-DD) (optional)
+:param security_id: string
+:param as_of_date: string as YYYY-MM-DD (optional)
 
 ##### Output
 
@@ -143,16 +143,18 @@ An object containing various descriptive fields for the specified security
 
 ##### Inputs
 
-1. security_id (string) (required)
-2. as_of_date (string as YYYY-MM-DD) (optional but recommended)
-3. price (float) (optional but recommended)
-4. volatility (float) (optional)
-5. yield_shift (int) (optional)
-6. shock_in_bp (int) (optional)
-7. horizon_months (int) (optional)
-8. income_tax (float) (optional)
-9. cap_gain_short_tax (float) (optional)
-10. cap_gain_long_tax (float) (optional)
+```
+:param security_id: string (required)
+:keyword as_of_date: string as YYYY-MM-DD (optional)
+:keyword price: float (optional)
+:keyword volatility: float (optional)
+:keyword yield_shift: int (basis points, optional)
+:keyword shock_in_bp: int (basis points, optional)
+:keyword horizon_months: uint (optional)
+:keyword income_tax: float (optional)
+:keyword cap_gain_short_tax: float (optional)
+:keyword cap_gain_long_tax: float (optional)
+```
 
 ##### Output
 
@@ -203,10 +205,12 @@ An object containing various fixed income risk analytics measures for the specif
 
 ##### Inputs
 
-1. security_id (string) (required)
-2. as_of_date (string as YYYY-MM-DD) (optional but recommended)
-3. price (float) (optional but recommended)
-4. shock_in_bp (int) (optional)
+```
+:param security_id: string
+:keyword as_of_date: string as YYYY-MM-DD (optional)
+:keyword price: float (optional)
+:keyword shock_in_bp: int (optional)
+```
 
 ##### Output
 
@@ -235,7 +239,10 @@ An object containing a vector time series of cash flow dates and corresponding a
 
 ## Javascript SDK
 
-The Javascript SDK is similarly implemented as a wrapper class with member functions for invoking the various API methods, however, all methods are implemented as asynchronous functions and must used accordingly.
+The Javascript SDK is similarly implemented as a wrapper class with member functions for invoking the various API 
+methods, however, all methods are implemented as asynchronous functions and must used accordingly. Key word arguments 
+must be specified within a single map object argument for the security analytics and security cash flows functions since
+key words are not natively supported by javascript.
 
 #### Initialization
 
@@ -306,8 +313,10 @@ finx.get_api_methods().then(data => console.log(data));
 
 ##### Inputs
 
-1. security_id (string) (required)
-2. as_of_date (string as YYYY-MM-DD) (optional)
+```
+:param security_id: string
+:param as_of_date: string as YYYY-MM-DD (optional)
+```
 
 ##### Output
 
@@ -342,16 +351,18 @@ finx.get_security_reference_data('USQ98418AH10', '2020-09-14').then(data => cons
 
 ##### Inputs
 
-1. security_id (string) (required)
-2. as_of_date (string as YYYY-MM-DD) (optional but recommended)
-3. price (float) (optional but recommended)
-4. volatility (float) (optional)
-5. yield_shift (int) (optional)
-6. shock_in_bp (int) (optional)
-7. horizon_months (int) (optional)
-8. income_tax (float) (optional)
-9. cap_gain_short_tax (float) (optional)
-10. cap_gain_long_tax (float) (optional)
+```
+:param security_id: string (required)
+:keyword as_of_date: string as YYYY-MM-DD (optional)
+:keyword price: float (optional)
+:keyword volatility: float (optional)
+:keyword yield_shift: int (basis points, optional)
+:keyword shock_in_bp: int (basis points, optional)
+:keyword horizon_months: uint (optional)
+:keyword income_tax: float (optional)
+:keyword cap_gain_short_tax: float (optional)
+:keyword cap_gain_long_tax: float (optional)
+```
 
 ##### Output
 
@@ -359,7 +370,7 @@ An object containing various fixed income risk analytics measures for the specif
 
 ##### Example
 ```
-finx.get_security_analytics('USQ98418AH10', '2020-09-14').then(data => console.log(data));
+finx.get_security_analytics('USQ98418AH10', {as_of_date: '2020-09-14', price: 100}).then(data => console.log(data));
 {
   security_id: 'USQ98418AH10',
   as_of_date: '2020-09-14T00:00:00Z',
@@ -402,10 +413,12 @@ finx.get_security_analytics('USQ98418AH10', '2020-09-14').then(data => console.l
 
 ##### Inputs
 
-1. security_id (string) (required)
-2. as_of_date (string as YYYY-MM-DD) (optional but recommended)
-3. price (float) (optional but recommended)
-4. shock_in_bp (int) (optional)
+```
+:param security_id: string
+:keyword as_of_date: string as YYYY-MM-DD (optional)
+:keyword price: float (optional)
+:keyword shock_in_bp: int (optional)
+```
 
 ##### Output
 
@@ -413,7 +426,7 @@ An object containing a vector time series of cash flow dates and corresponding a
 
 ##### Example
 ```
-finx.get_security_cash_flows('USQ98418AH10', '2020-09-14', 100).then(data => console.log(data));
+finx.get_security_cash_flows('USQ98418AH10', {as_of_date: '2020-09-14', price: 100}).then(data => console.log(data));
 {
   security_id: 'USQ98418AH10',
   as_of_date: '2020-09-14',

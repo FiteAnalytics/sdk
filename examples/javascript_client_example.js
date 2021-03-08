@@ -18,13 +18,13 @@ finx.get_security_reference_data(security_id, as_of_date).then(data => {
 });
 
 // Get security analytics
-finx.get_security_analytics(security_id, as_of_date, 100).then(data => {
+finx.get_security_analytics(security_id, {as_of_date: as_of_date, price: 100}).then(data => {
     console.log('\n*********** Security Analytics ***********');
     console.log(data);
 });
 
 // Get projected cash flows
-finx.get_security_cash_flows(security_id, as_of_date, 100).then(data => {
+finx.get_security_cash_flows(security_id, {as_of_date: as_of_date, price: 100}).then(data => {
     console.log('\n*********** Security Cash Flows ***********');
     console.log(data);
 });

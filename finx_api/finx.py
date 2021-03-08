@@ -10,8 +10,10 @@ class FinX:
 	def __init__(self, **kwargs):
 		"""
         Client constructor accepts 2 distinct methods for passing credentials named FINX_API_KEY and FINX_API_ENDPOINT
-        1. yaml_path: path to YAML file
-        2. env_path: path to .env file
+
+        :keyword yaml_path: path to YAML file
+        :keyword env_path: path to .env file
+
         If yaml_path not passed, loads env_path (if passed) then checks environment variables
         """
 		yaml_path = kwargs.get('yaml_path')
@@ -24,8 +26,8 @@ class FinX:
 			if env_path is not None:
 				try:
 					dotenv.load_dotenv(env_path)
-				except:
-					print(f'Could not load .env file at {env_path}')
+				except Exception as e:
+					print(f'Could not load .env file at {env_path}: {e}')
 			self.__api_key = os.getenv('FINX_API_KEY')
 			self.__api_url = os.getenv('FINX_API_ENDPOINT')
 		if self.__api_key is None:
@@ -41,80 +43,59 @@ class FinX:
 		"""
         List API methods with parameter specifications
         """
-		request_body = {
+		return self.__dispatch({
 			'finx_api_key': self.__api_key,
 			'api_method': 'list_api_functions'
-		}
-		return self.__dispatch(request_body)
+		})
 
 	def get_security_reference_data(self, security_id, as_of_date=None):
 		"""
         Security reference function
+
         :param security_id: string
         :param as_of_date: string as YYYY-MM-DD (optional)
-        :return:
         """
-		request_body = {
+		return self.__dispatch({
 			'finx_api_key': self.__api_key,
 			'api_method': 'security_reference',
 			'security_id': security_id,
 			'as_of_date': as_of_date
-		}
-		return self.__dispatch(request_body)
+		})
 
-	def get_security_analytics(self, security_id,
-	                           as_of_date=None,
-	                           price=100,
-	                           volatility=None,
-	                           yield_shift=None,
-	                           shock_in_bp=None,
-	                           horizon_months=None,
-	                           income_tax=None,
-	                           cap_gain_short_tax=None,
-	                           cap_gain_long_tax=None):
+	def get_security_analytics(self, security_id, **kwargs):
 		"""
         Security analytics function
+
         :param security_id: string (required)
-        :param as_of_date: string as YYYY-MM-DD (optional)
-        :param price: float (optional)
-        :param volatility: float (optional)
-        :param yield_shift: int (basis points, optional)
-        :param shock_in_bp: int (basis points, optional)
-        :param horizon_months: uint (optional)
-        :param income_tax: float (optional)
-        :param cap_gain_short_tax: float (optional)
-        :param cap_gain_long_tax: float (optional)
+        :keyword as_of_date: string as YYYY-MM-DD (optional)
+        :keyword price: float (optional)
+        :keyword volatility: float (optional)
+        :keyword yield_shift: int (basis points, optional)
+        :keyword shock_in_bp: int (basis points, optional)
+        :keyword horizon_months: uint (optional)
+        :keyword income_tax: float (optional)
+        :keyword cap_gain_short_tax: float (optional)
+        :keyword cap_gain_long_tax: float (optional)
         """
-		request_body = {
+		return self.__dispatch({
 			'finx_api_key': self.__api_key,
 			'api_method': 'security_analytics',
 			'security_id': security_id,
-			'as_of_date': as_of_date,
-			'price': price,
-			'volatility': volatility,
-			'yield_shift': yield_shift,
-			'shock_in_bp': shock_in_bp,
-			'horizon_months': horizon_months,
-			'income_tax': income_tax,
-			'cap_gain_short_tax': cap_gain_short_tax,
-			'cap_gain_long_tax': cap_gain_long_tax
-		}
-		return self.__dispatch(request_body)
+			**{arg: value for arg, value in kwargs.items() if value is not None}
+		})
 
-	def get_security_cash_flows(self, security_id, as_of_date=None, price=100, shock_in_bp=None):
+	def get_security_cash_flows(self, security_id, **kwargs):
 		"""
         Security cash flows function
+
         :param security_id: string
-        :param as_of_date: string as YYYY-MM-DD (optional)
-        :param price: float (optional)
-        :param shock_in_bp: int (optional)
+        :keyword as_of_date: string as YYYY-MM-DD (optional)
+        :keyword price: float (optional)
+        :keyword shock_in_bp: int (optional)
         """
-		request_body = {
+		return self.__dispatch({
 			'finx_api_key': self.__api_key,
 			'api_method': 'security_cash_flows',
 			'security_id': security_id,
-			'as_of_date': as_of_date,
-			'price': price,
-			'shock_in_bp': shock_in_bp
-		}
-		return self.__dispatch(request_body)
+			**{arg: value for arg, value in kwargs.items() if value is not None}
+		})

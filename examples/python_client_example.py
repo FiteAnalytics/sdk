@@ -22,10 +22,10 @@ print(reference_data)
 
 # Get security analytics
 print('\n*********** Security Analytics ***********')
-analytics = finx.get_security_analytics(security_id, as_of_date, price=100)
+analytics = finx.get_security_analytics(security_id, as_of_date=as_of_date, price=100)
 print(analytics)
 
 # Get projected cash flows
 print('\n*********** Security Cash Flows ***********')
-cash_flows = finx.get_security_cash_flows(security_id, as_of_date, price=100)
+cash_flows = finx.get_security_cash_flows(security_id, as_of_date=as_of_date, price=100)
 print(cash_flows)
