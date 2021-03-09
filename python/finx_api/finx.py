@@ -1,8 +1,8 @@
 #! Python
-import os
 import yaml
-import dotenv
 import requests
+from os import getenv
+from dotenv import load_dotenv
 
 
 class FinX:
@@ -25,11 +25,11 @@ class FinX:
             env_path = kwargs.get('env_path')
             if env_path is not None:
                 try:
-                    dotenv.load_dotenv(env_path)
+                    load_dotenv(env_path)
                 except Exception as e:
                     print(f'Could not load .env file at {env_path}: {e}')
-            self.__api_key = os.getenv('FINX_API_KEY')
-            self.__api_url = os.getenv('FINX_API_ENDPOINT')
+            self.__api_key = getenv('FINX_API_KEY')
+            self.__api_url = getenv('FINX_API_ENDPOINT')
         if self.__api_key is None:
             raise Exception('API key not found')
         if self.__api_url is None:
@@ -66,7 +66,7 @@ class FinX:
         """
         Security analytics function
 
-        :param security_id: string (required)
+        :param security_id: string
         :keyword as_of_date: string as YYYY-MM-DD (optional)
         :keyword price: float (optional)
         :keyword volatility: float (optional)

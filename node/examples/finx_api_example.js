@@ -1,7 +1,7 @@
-import FinX from "./finx_api/finx.js";
+import FinX from "../finx_api/finx.js";
 
 // Initialize client with YAML configuration
-let finx = FinX('../finx_config.yml');
+let finx = FinX({yaml_path: '../../finx_config.yml'});
 
 // Get API methods
 finx.get_api_methods().then(data => {

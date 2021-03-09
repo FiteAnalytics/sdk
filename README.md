@@ -40,14 +40,14 @@ To see the SDK in action, we've included example scripts for each implementation
 
 #### Node.js
 ```shell script
-$ cd ~/sdk/node
-$ node node_client_example.js
+$ cd ~/sdk/node/examples
+$ node finx_api_example.js
 ```
 
 #### Python
 ```shell script
-$ cd ~/sdk/python
-$ python3 python_client_example.py
+$ cd ~/sdk/python/examples
+$ python3 finx_api_example.py
 ```
 
 ### Python SDK
@@ -204,7 +204,7 @@ An object containing various descriptive fields for the specified security
 ##### Inputs
 
 ```
-:param security_id: string (required)
+:param security_id: string
 :keyword as_of_date: string as YYYY-MM-DD (optional)
 :keyword price: float (optional)
 :keyword volatility: float (optional)
@@ -222,7 +222,7 @@ An object containing various fixed income risk analytics measures for the specif
 
 ##### Example
 ```python
->>> analytics = finx.get_security_analytics(security_id, as_of_date=as_of_date, price=100)
+>>> analytics = finx.get_security_analytics('USQ98418AH10', as_of_date='2020-09-14', price=100)
 >>> print(json.dumps(analytics, indent=4))
 ```
 ###### Output
@@ -282,7 +282,7 @@ An object containing a vector time series of cash flow dates and corresponding a
 
 ##### Example
 ```python
->>> cash_flows = finx.get_security_cash_flows(security_id, as_of_date=as_of_date, price=100)
+>>> cash_flows = finx.get_security_cash_flows('USQ98418AH10', as_of_date='2020-09-14', price=100)
 >>> print(json.dumps(cash_flows, indent=4))
 ```
 ###### Output
@@ -308,7 +308,7 @@ An object containing a vector time series of cash flow dates and corresponding a
 ### Javascript SDK
 
 The Javascript SDK is similarly implemented as a wrapper class with member functions for invoking the various API 
-methods, however, all methods are implemented as asynchronous functions and must used accordingly. Key word arguments 
+methods, however, all methods are implemented as asynchronous functions and must be invoked accordingly. Key word arguments 
 must be specified using a map object argument for the initialization, security analytics and security cash flows 
 functions since key words are not natively supported by javascript.
 
@@ -432,7 +432,7 @@ finx.get_security_reference_data('USQ98418AH10', '2020-09-14').then(data => cons
 ##### Inputs
 
 ```
-:param security_id: string (required)
+:param security_id: string
 :keyword as_of_date: string as YYYY-MM-DD (optional)
 :keyword price: float (optional)
 :keyword volatility: float (optional)

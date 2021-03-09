@@ -10,6 +10,8 @@
       <sourceFolder url="file://$MODULE_DIR$/node" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/python/finx_api" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/node/finx_api" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/python/examples" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/node/examples" isTestSource="false" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
