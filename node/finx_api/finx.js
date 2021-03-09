@@ -1,3 +1,6 @@
+/*
+finx.js
+ */
 import axios from "axios";
 import { load } from "js-yaml";
 import { readFileSync }  from "fs";

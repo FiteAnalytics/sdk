@@ -1,3 +1,6 @@
+/*
+finx_api_example.js
+ */
 import FinX from "../finx_api/finx.js";
 
 // Initialize client with YAML configuration

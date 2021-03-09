@@ -1,4 +1,7 @@
 #! Python
+"""
+finx.py
+"""
 import yaml
 import requests
 from os import getenv
