@@ -2,9 +2,10 @@ import fs  from "fs";
 import axios from "axios";
 import { load } from "js-yaml";
 
-function FinX(yaml_path=null, env_path=null) {
+function FinX(kwargs={}) {
     let api_key = null,
         api_url = null;
+    const yaml_path = kwargs['yaml_path'];
     if (yaml_path != null) {
         const fileContents = fs.readFileSync(yaml_path, 'utf8'),
             config = load(fileContents);
@@ -12,6 +13,7 @@ function FinX(yaml_path=null, env_path=null) {
         api_url = config['FINX_API_ENDPOINT'];
     }
     else {
+        const env_path = kwargs['env_path'];
         if (env_path != null)
             try {
                 require('dotenv').config({path: env_path});
@@ -22,9 +24,9 @@ function FinX(yaml_path=null, env_path=null) {
         api_key = process.env.FINX_API_KEY;
         api_url = process.env.FINX_API_ENDPOINT;
     }
-    if (typeof api_key == 'undefined' || api_key == null)
+    if (api_key == null)
         throw new Error('API key not found');
-    if (typeof api_url == 'undefined' || api_url == null)
+    if (api_url == null)
         api_url = 'https://sandbox.finx.io/api/';
 
     const load_keyword_arguments = (request_body, kwargs) => {

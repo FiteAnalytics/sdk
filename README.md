@@ -15,7 +15,7 @@ The FinX API requires an API key for usage. You may also be provided with a spec
 The first method is via a YAML configuration file containing your credentials. You may give the path to this file when initializing the client:
 
 ### YAML configuration syntax
-```
+```yaml
 VERSION: 1
 FINX_API_KEY: my_finx_key
 FINX_API_ENDPOINT: https://api.finx.io
@@ -31,7 +31,7 @@ FINX_API_ENDPOINT=https://api.finx.io
 ### SDK Installation
 
 For the time being, please clone this repository into your project to begin using the SDK.
-```
+```shell script
 $ git clone https://github.com/FiteAnalytics/sdk
 ```
 ### Quickstart
@@ -39,13 +39,13 @@ $ git clone https://github.com/FiteAnalytics/sdk
 To see the SDK in action, we've included example scripts for each implementation
 
 #### Node.js
-```
+```shell script
 $ cd ~/sdk/node
 $ node node_client_example.js
 ```
 
 #### Python
-```
+```shell script
 $ cd ~/sdk/python
 $ python3 python_client_example.py
 ```
@@ -56,7 +56,7 @@ The Python SDK is implemented as a wrapper class with member functions for invok
 arguments for the security analytics and security cash flows functions must be specified as key word arguments.
 
 Ensure you have installed the required packages listed in requirements.txt:
-```
+```shell script
 $ cd ~/sdk/python
 $ pip3 install -r requirements.txt
 ```
@@ -73,9 +73,8 @@ $ pip3 install -r requirements.txt
 Returns a class object with member functions for invoking the various API methods
 
 ##### Example
-```
-$ python3
-...
+```python
+>>> import json
 >>> from finx_api.finx import FinX
 
 # YAML configuration file
@@ -99,32 +98,62 @@ None
 A object mapping each available API method to their respective required and optional parameters
 
 ##### Example
+```python
+>>> api_methods = finx.get_api_methods()
+>>> print(json.dumps(api_methods, indent=4))                      
 ```
->>> finx.get_api_methods()
+###### Output
+```json5
 {
-  hello_world: { required: [ 'my_name' ], optional: [ 'my_favorite_animal' ] },
-  security_reference: { required: [ 'security_id' ], optional: [ 'as_of_date' ] },
-  security_analytics: {
-    required: [ 'security_id' ],
-    optional: [
-      'price',
-      'as_of_date',
-      'volatility',
-      'yield_shift',
-      'shock_in_bp',
-      'horizon_months',
-      'income_tax',
-      'cap_gain_short_tax',
-      'cap_gain_long_tax',
-      'use_kalotay_analytics'
-    ]
-  },
-  security_cash_flows: {
-    required: [ 'security_id' ],
-    optional: [ 'as_of_date', 'price', 'shock_in_bp' ]
-  },
-  list_api_functions: { required: [], optional: [] },
+    "hello_world": {
+        "required": [
+            "my_name"
+        ],
+        "optional": [
+            "my_favorite_animal"
+        ]
+    },
+    "security_reference": {
+        "required": [
+            "security_id"
+        ],
+        "optional": [
+            "as_of_date"
+        ]
+    },
+    "security_analytics": {
+        "required": [
+            "security_id"
+        ],
+        "optional": [
+            "price",
+            "as_of_date",
+            "volatility",
+            "yield_shift",
+            "shock_in_bp",
+            "horizon_months",
+            "income_tax",
+            "cap_gain_short_tax",
+            "cap_gain_long_tax",
+            "use_kalotay_analytics"
+        ]
+    },
+    "security_cash_flows": {
+        "required": [
+            "security_id"
+        ],
+        "optional": [
+            "as_of_date",
+            "price",
+            "shock_in_bp"
+        ]
+    },
+    "list_api_functions": {
+        "required": [],
+        "optional": []
+    },
 }
+
 ```
 
 
@@ -142,27 +171,31 @@ A object mapping each available API method to their respective required and opti
 An object containing various descriptive fields for the specified security
 
 ##### Example
+```python
+>>> reference_data = finx.get_security_reference_data('USQ98418AH10', '2020-09-14')
+>>> print(json.dumps(reference_data, indent=4))
 ```
->>> finx.get_security_reference_data('USQ98418AH10', '2020-09-14')
+###### Output
+```json5
 {
-  security_id: 'USQ98418AH10',
-  as_of_date: '2020-09-14',
-  security_name: null,
-  asset_class: 'bond',
-  security_type: 'corporate',
-  government_type: null,
-  corporate_type: null,
-  municipal_type: null,
-  structured_type: null,
-  mbspool_type: null,
-  currency: 'USD',
-  maturity_date: '2020-09-22T00:00:00Z',
-  issue_date: '2010-09-22T00:00:00Z',
-  issuer_name: 'Woolworths Group Limited',
-  current_coupon: 4,
-  has_optionality: false,
-  has_sinking_schedule: false,
-  has_floating_rate: false
+    "security_id": "USQ98418AH10",
+    "as_of_date": "2020-09-14",
+    "security_name": null,
+    "asset_class": "bond",
+    "security_type": "corporate",
+    "government_type": null,
+    "corporate_type": null,
+    "municipal_type": null,
+    "structured_type": null,
+    "mbspool_type": null,
+    "currency": "USD",
+    "maturity_date": "2020-09-22T00:00:00Z",
+    "issue_date": "2010-09-22T00:00:00Z",
+    "issuer_name": "Woolworths Group Limited",
+    "current_coupon": 4.0,
+    "has_optionality": false,
+    "has_sinking_schedule": false,
+    "has_floating_rate": false
 }
 ```
 
@@ -188,43 +221,47 @@ An object containing various descriptive fields for the specified security
 An object containing various fixed income risk analytics measures for the specified security and parameters
 
 ##### Example
+```python
+>>> analytics = finx.get_security_analytics(security_id, as_of_date=as_of_date, price=100)
+>>> print(json.dumps(analytics, indent=4))
 ```
->>> finx.get_security_analytics(security_id='USQ98418AH10', as_of_date='2020-09-14', price=100)
+###### Output
+```json5
 {
-  security_id: 'USQ98418AH10',
-  as_of_date: '2020-09-14T00:00:00Z',
-  price: 100,
-  convexity_par: 0.0002,
-  dur_to_worst: 0.0218,
-  dur_to_worst_ann: 0.0214,
-  eff_dur_par: 0.0222,
-  eff_dur_spot: 0.0222,
-  local_dur: 0.0214,
-  macaulay_dur: 0.0222,
-  macaulay_dur_to_worst: 0.0222,
-  modified_dur: 0.0218,
-  modified_dur_ann: 0.0214,
-  libor_oas: 0.0369,
-  oas: 0.0382,
-  yield_to_maturity_ann: 0.04,
-  yield_to_option: 0.0396,
-  yield_value_32: 0.014,
-  spread_dur: 0.0222,
-  accrued_interest: 1.9111,
-  asset_swap_spread: 0.0373,
-  average_life: 0.022222222222222195,
-  coupon_rate: 4,
-  current_yield: 0.04,
-  discount_margin: -9999,
-  convexity_spot: 0.0002,
-  dv01: 0.0002,
-  maturity_years: 0.0222,
-  nominal_spread: 0.0386,
-  stated_maturity_years: 0.0222,
-  yield_to_maturity: 0.0396,
-  yield_to_put: 0.0396,
-  annual_yield: 0.0404,
-  zvo: 0.0382
+    "security_id": "USQ98418AH10",
+    "as_of_date": "2020-09-14T00:00:00Z",
+    "price": 100.0,
+    "convexity_par": 0.0002,
+    "dur_to_worst": 0.0218,
+    "dur_to_worst_ann": 0.0214,
+    "eff_dur_par": 0.0222,
+    "eff_dur_spot": 0.0222,
+    "local_dur": 0.0214,
+    "macaulay_dur": 0.0222,
+    "macaulay_dur_to_worst": 0.0222,
+    "modified_dur": 0.0218,
+    "modified_dur_ann": 0.0214,
+    "libor_oas": 0.0369,
+    "oas": 0.0382,
+    "yield_to_maturity_ann": 0.04,
+    "yield_to_option": 0.0396,
+    "yield_value_32": 0.014,
+    "spread_dur": 0.0222,
+    "accrued_interest": 1.9111,
+    "asset_swap_spread": 0.0373,
+    "average_life": 0.022222222222222195,
+    "coupon_rate": 4.0,
+    "current_yield": 0.04,
+    "discount_margin": -9999,
+    "convexity_spot": 0.0002,
+    "dv01": 0.0002,
+    "maturity_years": 0.0222,
+    "nominal_spread": 0.0386,
+    "stated_maturity_years": 0.0222,
+    "yield_to_maturity": 0.0396,
+    "yield_to_put": 0.0396,
+    "annual_yield": 0.0404,
+    "zvo": 0.0382
 }
 ```
 
@@ -244,23 +281,27 @@ An object containing various fixed income risk analytics measures for the specif
 An object containing a vector time series of cash flow dates and corresponding amounts
 
 ##### Example
+```python
+>>> cash_flows = finx.get_security_cash_flows(security_id, as_of_date=as_of_date, price=100)
+>>> print(json.dumps(cash_flows, indent=4))
 ```
->>> finx.get_security_cash_flows(security_id='USQ98418AH10', as_of_date='2020-09-14', price=100)
+###### Output
+```json5
 {
-  security_id: 'USQ98418AH10',
-  as_of_date: '2020-09-14',
-  cash_flows: [
-    {
-      total_cash_flows: 102,
-      interest_cash_flows: 2,
-      other_principal_cash_flows: 0,
-      principal_cash_flows: 100,
-      call_cash_flows: 0,
-      put_cash_flows: 0,
-      accrued_interest: 0,
-      cash_flow_date: '2020-09-22'
-    }
-  ]
+    "security_id": "USQ98418AH10",
+    "as_of_date": "2020-09-14",
+    "cash_flows": [
+        {
+            "total_cash_flows": 102.0,
+            "interest_cash_flows": 2.0,
+            "other_principal_cash_flows": 0.0,
+            "principal_cash_flows": 100.0,
+            "call_cash_flows": 0.0,
+            "put_cash_flows": 0.0,
+            "accrued_interest": 0.0,
+            "cash_flow_date": "2020-09-22"
+        }
+    ]
 }
 ```
 
@@ -268,11 +309,11 @@ An object containing a vector time series of cash flow dates and corresponding a
 
 The Javascript SDK is similarly implemented as a wrapper class with member functions for invoking the various API 
 methods, however, all methods are implemented as asynchronous functions and must used accordingly. Key word arguments 
-must be specified using a map object argument for the security analytics and security cash flows functions since
-key words are not natively supported by javascript.
+must be specified using a map object argument for the initialization, security analytics and security cash flows 
+functions since key words are not natively supported by javascript.
 
 Ensure you have installed the packages listed in package.json:
-```
+```shell script
 $ cd ~/sdk/node
 $ npm install
 ```
@@ -289,14 +330,14 @@ $ npm install
 Returns a class object with member functions for invoking the various API methods
 
 ##### Example
-```
+```js
 import FinX from "finx_api/finx.js";
 
 // YAML configuration
-let finx = FinX('finx_api/finx_config.yml');
+let finx = FinX({yaml_path: 'finx_api/finx_config.yml'});
 
 // .env file
-finx = FinX(null, env_path='path/to/.env');
+finx = FinX({env_path: 'path/to/.env'});
 
 // No file (will check environment variables);
 finx = FinX()
@@ -313,9 +354,11 @@ None
 A object mapping each available API method to their respective required and optional parameters
 
 ##### Example
-```
+```js
 finx.get_api_methods().then(data => console.log(data));
-
+```
+###### Output
+```json5
 {
   hello_world: { required: [ 'my_name' ], optional: [ 'my_favorite_animal' ] },
   security_reference: { required: [ 'security_id' ], optional: [ 'as_of_date' ] },
@@ -357,9 +400,11 @@ finx.get_api_methods().then(data => console.log(data));
 An object containing various descriptive fields for the specified security
 
 ##### Example
-```
+```js
 finx.get_security_reference_data('USQ98418AH10', '2020-09-14').then(data => console.log(data));
-
+```
+###### Output
+```json5
 {
   security_id: 'USQ98418AH10',
   as_of_date: '2020-09-14',
@@ -404,9 +449,11 @@ finx.get_security_reference_data('USQ98418AH10', '2020-09-14').then(data => cons
 An object containing various fixed income risk analytics measures for the specified security and parameters
 
 ##### Example
-```
+```js
 finx.get_security_analytics('USQ98418AH10', {as_of_date: '2020-09-14', price: 100}).then(data => console.log(data));
-
+```
+###### Output
+```json5
 {
   security_id: 'USQ98418AH10',
   as_of_date: '2020-09-14T00:00:00Z',
@@ -461,9 +508,11 @@ finx.get_security_analytics('USQ98418AH10', {as_of_date: '2020-09-14', price: 10
 An object containing a vector time series of cash flow dates and corresponding amounts
 
 ##### Example
-```
+```js
 finx.get_security_cash_flows('USQ98418AH10', {as_of_date: '2020-09-14', price: 100}).then(data => console.log(data));
-
+```
+###### Output
+```json5
 {
   security_id: 'USQ98418AH10',
   as_of_date: '2020-09-14',
