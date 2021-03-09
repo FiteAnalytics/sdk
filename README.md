@@ -320,7 +320,7 @@ An object containing a vector time series of cash flow dates and corresponding a
 
 ##### Output
 
-A list of corresponding results for each security ID specifid
+A list of corresponding results for each security ID specified
 
 ##### Example
 ```python
