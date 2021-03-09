@@ -67,7 +67,7 @@ $ pip3 install -r requirements.txt
 
 1. YAML configuration file formatted as described above (optional)
 2. .env file formatted as described above (optional)
-
+3. asyncio keyword to initialize an asynchronous client (optional) 
 ##### Output
 
 Returns a class object with member functions for invoking the various API methods
@@ -85,6 +85,9 @@ Returns a class object with member functions for invoking the various API method
 
 # No file (will check environment variables)
 >>> finx = FinX()
+
+# Asynchronous client (all functions are invoked as coroutines)
+>>> finx = FinX(asyncio=True)
 ```
 
 #### Get API Methods
@@ -303,6 +306,71 @@ An object containing a vector time series of cash flow dates and corresponding a
         }
     ]
 }
+```
+
+#### Batch
+
+##### Inputs
+
+```
+:param function: Client member function to invoke for each security
+:param security_ids: List of security IDs to invoke function on (max 100)
+:keyword kwargs: Key word arguments for function (optional)
+```
+
+##### Output
+
+A list of corresponding results for each security ID specifid
+
+##### Example
+```python
+>>> reference_data = finx.batch(finx.get_security_reference_data, ['USQ98418AH10', '3133XXP50'])
+>>> print(json.dumps(reference_data, indent=4))
+```
+###### Output
+```json5
+[
+    {
+        "security_id": "USQ98418AH10",
+        "as_of_date": "2021-03-09",
+        "security_name": null,
+        "asset_class": "bond",
+        "security_type": "corporate",
+        "government_type": null,
+        "corporate_type": null,
+        "municipal_type": null,
+        "structured_type": null,
+        "mbspool_type": null,
+        "currency": "USD",
+        "maturity_date": "2020-09-22T00:00:00Z",
+        "issue_date": "2010-09-22T00:00:00Z",
+        "issuer_name": "Woolworths Group Limited",
+        "current_coupon": 4.0,
+        "has_optionality": false,
+        "has_sinking_schedule": false,
+        "has_floating_rate": false
+    },
+    {
+        "security_id": "3133XXP50",
+        "as_of_date": "2021-03-09",
+        "security_name": null,
+        "asset_class": "bond",
+        "security_type": "government",
+        "government_type": null,
+        "corporate_type": null,
+        "municipal_type": null,
+        "structured_type": null,
+        "mbspool_type": null,
+        "currency": "USD",
+        "maturity_date": "2020-03-13T00:00:00Z",
+        "issue_date": "2010-03-16T00:00:00Z",
+        "issuer_name": "Federal Home Loan Banks",
+        "current_coupon": 4.125,
+        "has_optionality": false,
+        "has_sinking_schedule": false,
+        "has_floating_rate": false
+    }
+]
 ```
 
 ### Javascript SDK
