@@ -1,4 +1,12 @@
+---
+title: APIs
+tags: technology, documentation
+---
+
 # Fite Analytics Software Development Kit (SDK)
+
+Fite Analytics offers a free, public, RESTful API with complementary SDK to demo our services.
+Our API currently utilizes API keys for authentication.
 
 ## Introduction
 
@@ -8,31 +16,40 @@ source of information.
 For questions or comments please contact us [via email](mailto:info@fiteanalytics.com) or on [reddit](https://www.reddit.com/r/fiteanalytics/).
 
 ## FinX API SDK
-The FinX API is a RESTful API endpoint offering rich fixed income analytics calculations, including security reference data, interest rate risk metrics, and projected cash flows. The Fite Analytics SDK offers a client class implementation for a variety of programming languages to wrap access to the API methods. Unless specified otherwise, each language's client implementation consist solely of one implementation file containing all the necessary code to expose the API functions.
+The FinX API is a RESTful API endpoint offering rich fixed income analytics calculations, including security reference 
+data, interest rate risk metrics, and projected cash flows. The Fite Analytics SDK offers a client class implementation 
+for a variety of programming languages to wrap access to the API methods. Unless specified otherwise, each language's 
+client implementation consist solely of one implementation file containing all the necessary code to expose the API
+functions.
 
-The FinX API requires an API key for usage. You may also be provided with a specific URL for accessing services. Please contact us [via email](mailto:info@fiteanalytics.com) to obtain your key. We require three fields to validate your credentials: `VERSION`, `FINX_API_KEY` and `FINX_API_ENDPOINT`. Note that these keys are case sensitive. The SDK facilitates two distinct methods for securely passing credentials to the API clients.
+The FinX API requires an API key for usage. You may also be provided with a specific URL for accessing services. We 
+require three fields to validate your credentials: `VERSION`, `FINX_API_KEY` and `FINX_API_ENDPOINT`. 
+Note that these keys are case sensitive. The SDK facilitates two distinct methods for securely passing credentials to 
+the API clients.
 
-The first method is via a YAML configuration file containing your credentials. You may give the path to this file when initializing the client:
+The first method is via a YAML configuration file containing your credentials. You may give the path to this file when 
+initializing the client:
 
 ### YAML configuration syntax
 ```yaml
 VERSION: 1
 FINX_API_KEY: my_finx_key
-FINX_API_ENDPOINT: https://api.finx.io
+FINX_API_ENDPOINT: https://sandbox.finx.io/api
 ```
-The second method looks for the required credentials in environment variables. If a .env file is specified in the client initialization, the .env file will be loaded before checking the variables.
+The second method looks for the required credentials in environment variables. If a .env file is specified in the client 
+initialization, the .env file will be loaded before checking the variables.
 ### .env file syntax
 ```
 VERSION=1
 FINX_API_KEY=my_finx_key
-FINX_API_ENDPOINT=https://api.finx.io
+FINX_API_ENDPOINT=https://sandbox.finx.io/api
 ```
 
 ### SDK Installation
 
 For the time being, please clone this repository into your project to begin using the SDK.
 ```shell script
-$ git clone https://github.com/FiteAnalytics/sdk
+git clone https://github.com/FiteAnalytics/sdk
 ```
 ### Quickstart
 
@@ -40,14 +57,14 @@ To see the SDK in action, we've included example scripts for each implementation
 
 #### Node.js
 ```shell script
-$ cd ~/sdk/node/examples
-$ node finx_api_example.js
+cd ~/sdk/node/examples
+node finx_api_example.js
 ```
 
 #### Python
 ```shell script
-$ cd ~/sdk/python/examples
-$ python3 finx_api_example.py
+cd ~/sdk/python/examples
+python3 finx_api_example.py
 ```
 
 ### Python SDK
@@ -57,8 +74,8 @@ arguments for the security analytics and security cash flows functions must be s
 
 Ensure you have installed the required packages listed in requirements.txt:
 ```shell script
-$ cd ~/sdk/python
-$ pip3 install -r requirements.txt
+cd ~/sdk/python
+pip3 install -r requirements.txt
 ```
 
 #### Initialization
@@ -74,20 +91,20 @@ Returns a class object with member functions for invoking the various API method
 
 ##### Example
 ```python
->>> import json
->>> from finx_api.finx import FinX
+import json
+from finx_api.finx import FinX
 
 # YAML configuration file
->>> finx = FinX(yaml_path='path/to/file.yml')
+finx = FinX(yaml_path='path/to/finx_config.yml')
 
 # .env file
->>> finx = FinX(env_path='path/to/.env')
+finx = FinX(env_path='path/to/.env')
 
 # No file (will check environment variables)
->>> finx = FinX()
+finx = FinX()
 
 # Asynchronous client (all functions are invoked as coroutines)
->>> finx = FinX(asyncio=True)
+finx = FinX(asyncio=True)
 ```
 
 #### Get API Methods
@@ -102,8 +119,8 @@ A object mapping each available API method to their respective required and opti
 
 ##### Example
 ```python
->>> api_methods = finx.get_api_methods()
->>> print(json.dumps(api_methods, indent=4))                      
+api_methods = finx.get_api_methods()
+print(json.dumps(api_methods, indent=4))                      
 ```
 ###### Output
 ```json5
@@ -175,8 +192,10 @@ An object containing various descriptive fields for the specified security
 
 ##### Example
 ```python
->>> reference_data = finx.get_security_reference_data('USQ98418AH10', '2020-09-14')
->>> print(json.dumps(reference_data, indent=4))
+reference_data = finx.get_security_reference_data(
+    'USQ98418AH10', 
+    '2020-09-14')
+print(json.dumps(reference_data, indent=4))
 ```
 ###### Output
 ```json5
@@ -225,8 +244,11 @@ An object containing various fixed income risk analytics measures for the specif
 
 ##### Example
 ```python
->>> analytics = finx.get_security_analytics('USQ98418AH10', as_of_date='2020-09-14', price=100)
->>> print(json.dumps(analytics, indent=4))
+analytics = finx.get_security_analytics(
+    'USQ98418AH10', 
+    as_of_date='2020-09-14', 
+    price=100)
+print(json.dumps(analytics, indent=4))
 ```
 ###### Output
 ```json5
@@ -285,8 +307,11 @@ An object containing a vector time series of cash flow dates and corresponding a
 
 ##### Example
 ```python
->>> cash_flows = finx.get_security_cash_flows('USQ98418AH10', as_of_date='2020-09-14', price=100)
->>> print(json.dumps(cash_flows, indent=4))
+cash_flows = finx.get_security_cash_flows(
+    'USQ98418AH10', 
+    as_of_date='2020-09-14', 
+    price=100)
+print(json.dumps(cash_flows, indent=4))
 ```
 ###### Output
 ```json5
@@ -324,8 +349,10 @@ A list of corresponding results for each security ID specified
 
 ##### Example
 ```python
->>> reference_data = finx.batch(finx.get_security_reference_data, ['USQ98418AH10', '3133XXP50'])
->>> print(json.dumps(reference_data, indent=4))
+reference_data = finx.batch(
+    finx.get_security_reference_data, 
+    ['USQ98418AH10', '3133XXP50'])
+print(json.dumps(reference_data, indent=4))
 ```
 ###### Output
 ```json5
@@ -382,8 +409,8 @@ functions since key words are not natively supported by javascript.
 
 Ensure you have installed the packages listed in package.json:
 ```shell script
-$ cd ~/sdk/node
-$ npm install
+cd ~/sdk/node
+npm install
 ```
 
 #### Initialization
@@ -402,13 +429,13 @@ Returns a class object with member functions for invoking the various API method
 import FinX from "finx_api/finx.js";
 
 // YAML configuration
-let finx = FinX({yaml_path: 'finx_api/finx_config.yml'});
+let finx = FinX({yaml_path: 'path/to/finx_config.yml'});
 
 // .env file
 finx = FinX({env_path: 'path/to/.env'});
 
 // No file (will check environment variables);
-finx = FinX()
+finx = FinX();
 ```
 
 #### Get API Methods
@@ -469,7 +496,10 @@ An object containing various descriptive fields for the specified security
 
 ##### Example
 ```js
-finx.get_security_reference_data('USQ98418AH10', '2020-09-14').then(data => console.log(data));
+finx.get_security_reference_data(
+    'USQ98418AH10', 
+    '2020-09-14'
+).then(data => console.log(data));
 ```
 ###### Output
 ```json5
@@ -518,7 +548,13 @@ An object containing various fixed income risk analytics measures for the specif
 
 ##### Example
 ```js
-finx.get_security_analytics('USQ98418AH10', {as_of_date: '2020-09-14', price: 100}).then(data => console.log(data));
+finx.get_security_analytics(
+    'USQ98418AH10', 
+    {
+        as_of_date: '2020-09-14', 
+        price: 100
+    }
+).then(data => console.log(data));
 ```
 ###### Output
 ```json5
@@ -577,7 +613,13 @@ An object containing a vector time series of cash flow dates and corresponding a
 
 ##### Example
 ```js
-finx.get_security_cash_flows('USQ98418AH10', {as_of_date: '2020-09-14', price: 100}).then(data => console.log(data));
+finx.get_security_cash_flows(
+    'USQ98418AH10', 
+    {
+        as_of_date: '2020-09-14', 
+        price: 100
+    }
+).then(data => console.log(data));
 ```
 ###### Output
 ```json5
