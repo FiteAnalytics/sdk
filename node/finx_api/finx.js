@@ -6,25 +6,27 @@ import { load } from "js-yaml";
 import { readFileSync }  from "fs";
 
 function FinX(kwargs={}) {
-    let api_key = null,
-        api_url = null;
-    const yaml_path = kwargs['yaml_path'];
-    if (yaml_path != null) {
-        const config = load(readFileSync(yaml_path, 'utf8'));
-        api_key = config['FINX_API_KEY'];
-        api_url = config['FINX_API_ENDPOINT'];
-    }
-    else {
-        const env_path = kwargs['env_path'];
-        if (env_path != null)
-            try {
-                require('dotenv').config({path: env_path});
-            }
-            catch(e) {
-                console.log(`Could not load .env file at ${env_path}: ${e}`);
-            }
-        api_key = process.env.FINX_API_KEY;
-        api_url = process.env.FINX_API_ENDPOINT;
+
+    let api_key = kwargs['finx_api_key'],
+        api_url = kwargs['finx_api_endpoint'];
+    if (api_key == null) {
+        const yaml_path = kwargs['yaml_path'];
+        if (yaml_path != null) {
+            const config = load(readFileSync(yaml_path, 'utf8'));
+            api_key = config['FINX_API_KEY'];
+            api_url = config['FINX_API_ENDPOINT'];
+        }
+        else {
+            const env_path = kwargs['env_path'];
+            if (env_path != null)
+                try {
+                    require('dotenv').config({path: env_path});
+                } catch(e) {
+                    console.log(`Could not load .env file at ${env_path}: ${e}`);
+                }
+            api_key = process.env.FINX_API_KEY;
+            api_url = process.env.FINX_API_ENDPOINT;
+        }
     }
     if (api_key == null)
         throw new Error('API key not found');
@@ -37,7 +39,7 @@ function FinX(kwargs={}) {
     const dispatch = async(request_body, kwargs={}) => {
         if (Object.keys(kwargs).length !== 0) {
             for (const key in kwargs) {
-                if (kwargs.hasOwnProperty(key) && key !== 'api_method' && key !== 'finx_api_key') {
+                if (kwargs.hasOwnProperty(key) && key !== 'finx_api_key' && key !== 'api_method') {
                     const value = kwargs[key];
                     if (value != null)
                         request_body[key] = value;
@@ -113,10 +115,12 @@ function FinX(kwargs={}) {
     };
 
     return {
+        get_api_key: () => api_key,
+        get_api_url: () => api_url,
         get_api_methods: get_api_methods,
         get_security_reference_data: get_security_reference_data,
         get_security_analytics: get_security_analytics,
-        get_security_cash_flows: get_security_cash_flows
+        get_security_cash_flows: get_security_cash_flows,
     }
 }
 

@@ -11,31 +11,36 @@ from dotenv import load_dotenv
 from concurrent.futures import ThreadPoolExecutor
 
 
-class SyncFinX:
+class __SyncFinX:
 
     def __init__(self, **kwargs):
         """
-        Client constructor accepts 2 distinct methods for passing credentials named FINX_API_KEY and FINX_API_ENDPOINT
+        Client constructor supports multiple methods for passing credentials
 
-        :keyword yaml_path: path to YAML file
-        :keyword env_path: path to .env file
+        :keyword finx_api_key: string (handle with care)
+        :keyword finx_api_endpoint: string
+        :keyword yaml_path: string
+        :keyword env_path: string
 
         If yaml_path not passed, loads env_path (if passed) then checks environment variables
         """
-        yaml_path = kwargs.get('yaml_path')
-        if yaml_path is not None:
-            config = yaml.safe_load(open(yaml_path))
-            self.__api_key = config.get('FINX_API_KEY')
-            self.__api_url = config.get('FINX_API_ENDPOINT')
-        else:
-            env_path = kwargs.get('env_path')
-            if env_path is not None:
-                try:
-                    load_dotenv(env_path)
-                except Exception as e:
-                    print(f'Could not load .env file at {env_path}: {e}')
-            self.__api_key = getenv('FINX_API_KEY')
-            self.__api_url = getenv('FINX_API_ENDPOINT')
+        self.__api_key = kwargs.get('finx_api_key')
+        self.__api_url = kwargs.get('finx_api_endpoint')
+        if self.__api_key is None:
+            yaml_path = kwargs.get('yaml_path')
+            if yaml_path is not None:
+                config = yaml.safe_load(open(yaml_path))
+                self.__api_key = config.get('FINX_API_KEY')
+                self.__api_url = config.get('FINX_API_ENDPOINT')
+            else:
+                env_path = kwargs.get('env_path')
+                if env_path is not None:
+                    try:
+                        load_dotenv(env_path)
+                    except Exception as e:
+                        print(f'Could not load .env file at {env_path}: {e}')
+                self.__api_key = getenv('FINX_API_KEY')
+                self.__api_url = getenv('FINX_API_ENDPOINT')
         if self.__api_key is None:
             raise Exception('API key not found')
         if self.__api_url is None:
@@ -48,10 +53,15 @@ class SyncFinX:
     def get_api_url(self):
         return self.__api_url
 
-    def __dispatch(self, request_body):
+    def __dispatch(self, request_body, **kwargs):
+        if len(kwargs) != 0:
+            request_body.update({
+                key: value for key, value in kwargs.items()
+                if key != 'finx_api_key' and key != 'api_method' and value is not None
+            })
         return self.__session.post(self.__api_url, data=request_body).json()
 
-    def get_api_methods(self, **kwargs):
+    def get_api_methods(self):
         """
         List API methods with parameter specifications
         """
@@ -60,19 +70,21 @@ class SyncFinX:
             'api_method': 'list_api_functions'
         })
 
-    def get_security_reference_data(self, security_id, as_of_date=None, **kwargs):
+    def get_security_reference_data(self, security_id, as_of_date=None):
         """
         Security reference function
 
         :param security_id: string
         :param as_of_date: string as YYYY-MM-DD (optional)
         """
-        return self.__dispatch({
+        request_body = {
             'finx_api_key': self.__api_key,
             'api_method': 'security_reference',
             'security_id': security_id,
-            'as_of_date': as_of_date
-        })
+        }
+        if as_of_date is not None:
+            request_body['as_of_date'] = as_of_date
+        return self.__dispatch(request_body)
 
     def get_security_analytics(self, security_id, **kwargs):
         """
@@ -93,8 +105,7 @@ class SyncFinX:
             'finx_api_key': self.__api_key,
             'api_method': 'security_analytics',
             'security_id': security_id,
-            **{arg: value for arg, value in kwargs.items() if value is not None}
-        })
+        }, **kwargs)
 
     def get_security_cash_flows(self, security_id, **kwargs):
         """
@@ -108,9 +119,8 @@ class SyncFinX:
         return self.__dispatch({
             'finx_api_key': self.__api_key,
             'api_method': 'security_cash_flows',
-            'security_id': security_id,
-            **{arg: value for arg, value in kwargs.items() if value is not None}
-        })
+            'security_id': security_id
+        }, **kwargs)
 
     def batch(self, function, security_ids, **kwargs):
         assert type(security_ids) is list and len(security_ids) < 100
@@ -120,7 +130,7 @@ class SyncFinX:
         return [task.result() for task in tasks]
 
 
-class AsyncFinx(SyncFinX):
+class __AsyncFinx(__SyncFinX):
 
     def __init__(self, **kwargs):
         """
@@ -136,13 +146,18 @@ class AsyncFinx(SyncFinX):
         self.__api_url = self.get_api_url()
         self.__session = None
 
-    async def __dispatch(self, request_body):
+    async def __dispatch(self, request_body, **kwargs):
         if self.__session is None:
             self.__session = aiohttp.ClientSession()
+        if len(kwargs) != 0:
+            request_body.update({
+                key: value for key, value in kwargs.items()
+                if key != 'finx_api_key' and key != 'api_method' and value is not None
+            })
         async with self.__session.post(self.__api_url, data=request_body) as response:
             return await response.json()
 
-    async def get_api_methods(self, **kwargs):
+    async def get_api_methods(self):
         """
         List API methods with parameter specifications
         """
@@ -151,19 +166,21 @@ class AsyncFinx(SyncFinX):
             'api_method': 'list_api_functions'
         })
 
-    async def get_security_reference_data(self, security_id, as_of_date=None, **kwargs):
+    async def get_security_reference_data(self, security_id, as_of_date=None):
         """
         Security reference function
 
         :param security_id: string
         :param as_of_date: string as YYYY-MM-DD (optional)
         """
-        return await self.__dispatch({
+        request_body = {
             'finx_api_key': self.__api_key,
             'api_method': 'security_reference',
             'security_id': security_id,
-            'as_of_date': as_of_date
-        })
+        }
+        if as_of_date is not None:
+            request_body['as_of_date'] = as_of_date
+        return await self.__dispatch(request_body)
 
     async def get_security_analytics(self, security_id, **kwargs):
         """
@@ -184,8 +201,7 @@ class AsyncFinx(SyncFinX):
             'finx_api_key': self.__api_key,
             'api_method': 'security_analytics',
             'security_id': security_id,
-            **{arg: value for arg, value in kwargs.items() if value is not None}
-        })
+        }, **kwargs)
 
     async def get_security_cash_flows(self, security_id, **kwargs):
         """
@@ -200,8 +216,7 @@ class AsyncFinx(SyncFinX):
             'finx_api_key': self.__api_key,
             'api_method': 'security_cash_flows',
             'security_id': security_id,
-            **{arg: value for arg, value in kwargs.items() if value is not None}
-        })
+        }, **kwargs)
 
     async def batch(self, function, security_ids, **kwargs):
         """
@@ -211,7 +226,7 @@ class AsyncFinx(SyncFinX):
         :param kwargs: Relevant key words for function
         :return:
         """
-        assert type(security_ids) is list
+        assert function != self.get_api_methods and type(security_ids) is list
         try:
             asyncio.get_event_loop()
         except:
@@ -226,4 +241,4 @@ def FinX(**kwargs):
     Unified interface to spawn FinX client. Use keyword asyncio=True to specify the async client
     :keyword asyncio: bool (default False)
     """
-    return AsyncFinx(**kwargs) if kwargs.get('asyncio') not in [None, False] else SyncFinX(**kwargs)
+    return __AsyncFinx(**kwargs) if kwargs.get('asyncio') not in [None, False] else __SyncFinX(**kwargs)
