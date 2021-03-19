@@ -54,7 +54,7 @@ class __SyncFinX:
         return self.__api_url
 
     def __dispatch(self, request_body, **kwargs):
-        if len(kwargs) != 0:
+        if any(kwargs):
             request_body.update({
                 key: value for key, value in kwargs.items()
                 if key != 'finx_api_key' and key != 'api_method' and value is not None
@@ -122,11 +122,11 @@ class __SyncFinX:
             'security_id': security_id
         }, **kwargs)
 
-    def batch(self, function, security_ids, **kwargs):
-        assert type(security_ids) is list and len(security_ids) < 100
+    def batch(self, function, security_args):
+        assert function != self.get_api_methods and type(security_args) is dict and len(security_args) < 100
         executor = ThreadPoolExecutor()
-        tasks = [executor.submit(function, **{'security_id': security_id, **kwargs})
-                 for security_id in security_ids[:100]]
+        tasks = [executor.submit(function, security_id=security_id, **kwargs)
+                 for security_id, kwargs in security_args.items()]
         return [task.result() for task in tasks]
 
 
@@ -149,7 +149,7 @@ class __AsyncFinx(__SyncFinX):
     async def __dispatch(self, request_body, **kwargs):
         if self.__session is None:
             self.__session = aiohttp.ClientSession()
-        if len(kwargs) != 0:
+        if any(kwargs):
             request_body.update({
                 key: value for key, value in kwargs.items()
                 if key != 'finx_api_key' and key != 'api_method' and value is not None
@@ -218,21 +218,20 @@ class __AsyncFinx(__SyncFinX):
             'security_id': security_id,
         }, **kwargs)
 
-    async def batch(self, function, security_ids, **kwargs):
+    async def batch(self, function, security_args):
         """
         Invoke function for batch of securities
         :param function: Client member function
-        :param security_ids: List of security IDs (max 100)
-        :param kwargs: Relevant key words for function
+        :param security_args: dict mapping security_id (string) to a dict of key word arguments
         :return:
         """
-        assert function != self.get_api_methods and type(security_ids) is list
+        assert function != self.get_api_methods and type(security_args) is dict
         try:
             asyncio.get_event_loop()
         except:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
-        tasks = [function(security_id=security_id, **kwargs) for security_id in security_ids[:100]]
+        tasks = [function(security_id=security_id, **kwargs) for security_id, kwargs in security_args.items()]
         return await asyncio.gather(*tasks)
 
 
