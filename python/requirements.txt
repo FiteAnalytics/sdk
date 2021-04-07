@@ -1,2 +1,3 @@
 PyYAML
-dotenv
+python-dotenv
+aiohttp
