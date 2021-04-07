@@ -52,17 +52,6 @@ For the time being, please clone this repository into your project to begin usin
 git clone https://github.com/FiteAnalytics/sdk
 ```
 
-### Python SDK
-
-The Python SDK is implemented as a wrapper class with member functions for invoking the various API methods. Optional 
-arguments for the security analytics and security cash flows functions must be specified as key word arguments.
-
-Ensure you have installed the required packages listed in requirements.txt:
-```shell script
-cd ~/sdk/python
-pip3 install -r requirements.txt
-```
-
 ### Quickstart
 
 To see the SDK in action, we've included example scripts for each implementation
@@ -77,6 +66,17 @@ node finx_api_example.js
 ```shell script
 cd ~/sdk/python/examples
 python3 finx_api_example.py
+```
+
+### Python SDK
+
+The Python SDK is implemented as a wrapper class with member functions for invoking the various API methods. Optional 
+arguments for the security analytics and security cash flows functions must be specified as key word arguments.
+
+Ensure you have installed the required packages listed in requirements.txt:
+```shell script
+cd ~/sdk/python
+pip3 install -r requirements.txt
 ```
 
 #### Initialization
