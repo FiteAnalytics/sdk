@@ -22,7 +22,7 @@ for a variety of programming languages to wrap access to the API methods. Unless
 client implementation consist solely of one implementation file containing all the necessary code to expose the API
 functions.
 
-The FinX API requires an API key for usage. You may also be provided with a specific URL for accessing services. We 
+The FinX API requires an API key for usage (contact us and we will provide one). You may also be provided with a specific URL for accessing services. We 
 require three fields to validate your credentials: `VERSION`, `FINX_API_KEY` and `FINX_API_ENDPOINT`. 
 Note that these keys are case sensitive. The SDK facilitates two distinct methods for securely passing credentials to 
 the API clients.
