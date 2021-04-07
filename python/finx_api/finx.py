@@ -221,9 +221,8 @@ class __AsyncFinx(__SyncFinX):
     async def batch(self, function, security_args):
         """
         Invoke function for batch of securities
-        :param function: Client member function
-        :param security_args: dict mapping security_id (string) to a dict of key word arguments
-        :return:
+        :param function: Client member function to invoke for each security
+        :param security_args: Dict mapping dict mapping security_id (string) to a dict of key word arguments
         """
         assert function != self.get_api_methods and type(security_args) is dict
         try:

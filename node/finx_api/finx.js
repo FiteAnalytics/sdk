@@ -114,9 +114,22 @@ function FinX(kwargs={}) {
         }, kwargs)
     };
     
-    const batch = async(api_method, security_ids, kwargs={}) => {
+    const batch = async(api_method, security_args={}) => {
         console.assert(typeof api_method == 'function' && api_method !== get_api_methods);
-        let tasks = security_ids.map(security_id => api_method(security_ids))
+        let tasks = [];
+        if (api_method === get_security_reference_data) {
+            for (const security_id in security_args) {
+                if (security_args.hasOwnProperty(security_id))
+                    tasks.push(api_method(security_id, security_args[security_id]['as_of_date']));
+            }
+        }
+        else {
+            for (const security_id in security_args) {
+                if (security_args.hasOwnProperty(security_id))
+                    tasks.push(api_method, security_args[security_id]);
+            }
+        }
+        return await axios.all(tasks);
     };
 
     return {
@@ -126,6 +139,7 @@ function FinX(kwargs={}) {
         get_security_reference_data: get_security_reference_data,
         get_security_analytics: get_security_analytics,
         get_security_cash_flows: get_security_cash_flows,
+        batch: batch
     }
 }
 

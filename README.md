@@ -443,8 +443,7 @@ print(json.dumps(cash_flows, indent=4))
 
 ```
 :param function: Client member function to invoke for each security
-:param security_ids: List of security IDs to invoke function on (max 100)
-:keyword kwargs: Key word arguments for function (optional)
+:param security_args: Dict mapping dict mapping security_id (string) to a dict of key word arguments 
 ```
 
 ##### Output
@@ -750,4 +749,84 @@ finx.get_security_cash_flows(
     }
   ]
 }
+```
+
+#### Batch
+
+##### Inputs
+
+```
+:param function: Client member function to invoke for each security
+:param security_args: Object mapping security_id (string) to an object of key word arguments 
+```
+
+##### Output
+
+A list of corresponding results for each security ID specified
+
+##### Example
+```javascript
+reference_data = finx.batch(
+    finx.get_security_reference_data, 
+    {
+        'USQ98418AH10': {
+            'as_of_date': '2020-09-14'
+        }, 
+        '3133XXP50': {
+            'as_of_date': '2020-09-14'
+        }   
+    }
+).then(data => console.log(data));
+```
+
+##### Output
+```json5
+[
+  {
+    security_id: 'USQ98418AH10',
+    as_of_date: '2020-09-14',
+    security_name: null,
+    asset_class: 'bond',
+    security_type: 'corporate',
+    government_type: null,
+    corporate_type: null,
+    municipal_type: null,
+    structured_type: null,
+    mbspool_type: null,
+    currency: 'USD',
+    first_coupon_date: '2011-03-22T00:00:00Z',
+    maturity_date: '2020-09-22T00:00:00Z',
+    issue_date: '2010-09-22T00:00:00Z',
+    issuer_name: 'Woolworths Group Limited',
+    price: null,
+    accrued_interest: 1.9111111111111112,
+    current_coupon: 4,
+    has_optionality: false,
+    has_sinking_schedule: false,
+    has_floating_rate: false
+  },
+  {
+    security_id: '3133XXP50',
+    as_of_date: '2020-09-14',
+    security_name: null,
+    asset_class: 'bond',
+    security_type: 'government',
+    government_type: null,
+    corporate_type: null,
+    municipal_type: null,
+    structured_type: null,
+    mbspool_type: null,
+    currency: 'USD',
+    first_coupon_date: '2010-09-13T00:00:00Z',
+    maturity_date: '2020-03-13T00:00:00Z',
+    issue_date: '2010-03-16T00:00:00Z',
+    issuer_name: 'Federal Home Loan Banks',
+    price: null,
+    accrued_interest: 2.073958333333333,
+    current_coupon: 4.125,
+    has_optionality: false,
+    has_sinking_schedule: false,
+    has_floating_rate: false
+  }
+]
 ```
