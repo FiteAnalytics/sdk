@@ -34,7 +34,7 @@ initializing the client:
 ```yaml
 VERSION: 1
 FINX_API_KEY: my_finx_key
-FINX_API_ENDPOINT: https://sandbox.finx.io/api
+FINX_API_ENDPOINT: https://sandbox.finx.io/api/
 ```
 The second method looks for the required credentials in environment variables. If a .env file is specified in the client 
 initialization, the .env file will be loaded before checking the variables.
@@ -42,7 +42,7 @@ initialization, the .env file will be loaded before checking the variables.
 ```
 VERSION=1
 FINX_API_KEY=my_finx_key
-FINX_API_ENDPOINT=https://sandbox.finx.io/api
+FINX_API_ENDPOINT=https://sandbox.finx.io/api/
 ```
 
 ### SDK Installation
