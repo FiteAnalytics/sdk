@@ -240,4 +240,4 @@ def FinX(**kwargs):
     Unified interface to spawn FinX client. Use keyword asyncio=True to specify the async client
     :keyword asyncio: bool (default False)
     """
-    return __AsyncFinx(**kwargs) if kwargs.get('asyncio') not in [None, False] else __SyncFinX(**kwargs)
+    return __AsyncFinx(**kwargs) if kwargs.get('asyncio') else __SyncFinX(**kwargs)

@@ -113,6 +113,11 @@ function FinX(kwargs={}) {
             security_id: security_id
         }, kwargs)
     };
+    
+    const batch = async(api_method, security_ids, kwargs={}) => {
+        console.assert(typeof api_method == 'function' && api_method !== get_api_methods);
+        let tasks = security_ids.map(security_id => api_method(security_ids))
+    };
 
     return {
         get_api_key: () => api_key,

@@ -351,7 +351,14 @@ A list of corresponding results for each security ID specified
 ```python
 reference_data = finx.batch(
     finx.get_security_reference_data, 
-    ['USQ98418AH10', '3133XXP50'])
+    {
+        'USQ98418AH10': {
+            'as_of_date': '2020-09-14'
+        }, 
+        '3133XXP50': {
+            'as_of_date': '2020-09-14'
+        }   
+    })
 print(json.dumps(reference_data, indent=4))
 ```
 ###### Output
