@@ -769,11 +769,11 @@ A list of corresponding results for each security ID specified
 reference_data = finx.batch(
     finx.get_security_reference_data, 
     {
-        'USQ98418AH10': {
-            'as_of_date': '2020-09-14'
+        USQ98418AH10: {
+            as_of_date: '2020-09-14'
         }, 
-        '3133XXP50': {
-            'as_of_date': '2020-09-14'
+        3133XXP50: {
+            as_of_date: '2020-09-14'
         }   
     }
 ).then(data => console.log(data));
