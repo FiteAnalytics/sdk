@@ -51,6 +51,18 @@ For the time being, please clone this repository into your project to begin usin
 ```shell script
 git clone https://github.com/FiteAnalytics/sdk
 ```
+
+### Python SDK
+
+The Python SDK is implemented as a wrapper class with member functions for invoking the various API methods. Optional 
+arguments for the security analytics and security cash flows functions must be specified as key word arguments.
+
+Ensure you have installed the required packages listed in requirements.txt:
+```shell script
+cd ~/sdk/python
+pip3 install -r requirements.txt
+```
+
 ### Quickstart
 
 To see the SDK in action, we've included example scripts for each implementation
@@ -65,17 +77,6 @@ node finx_api_example.js
 ```shell script
 cd ~/sdk/python/examples
 python3 finx_api_example.py
-```
-
-### Python SDK
-
-The Python SDK is implemented as a wrapper class with member functions for invoking the various API methods. Optional 
-arguments for the security analytics and security cash flows functions must be specified as key word arguments.
-
-Ensure you have installed the required packages listed in requirements.txt:
-```shell script
-cd ~/sdk/python
-pip3 install -r requirements.txt
 ```
 
 #### Initialization
@@ -193,15 +194,15 @@ An object containing various descriptive fields for the specified security
 ##### Example
 ```python
 reference_data = finx.get_security_reference_data(
-    'USQ98418AH10', 
-    '2020-09-14')
+    '655664AP5', 
+    '2017-12-19')
 print(json.dumps(reference_data, indent=4))
 ```
 ###### Output
 ```json5
 {
-    "security_id": "USQ98418AH10",
-    "as_of_date": "2020-09-14",
+    "security_id": "655664AP5",
+    "as_of_date": "2017-12-19",
     "security_name": null,
     "asset_class": "bond",
     "security_type": "corporate",
@@ -211,11 +212,14 @@ print(json.dumps(reference_data, indent=4))
     "structured_type": null,
     "mbspool_type": null,
     "currency": "USD",
-    "maturity_date": "2020-09-22T00:00:00Z",
-    "issue_date": "2010-09-22T00:00:00Z",
-    "issuer_name": "Woolworths Group Limited",
+    "first_coupon_date": "2012-04-15T00:00:00Z",
+    "maturity_date": "2021-10-15T00:00:00Z",
+    "issue_date": "2011-10-11T00:00:00Z",
+    "issuer_name": "Nordstrom, Inc.",
+    "price": null,
+    "accrued_interest": 0.7111111111111111,
     "current_coupon": 4.0,
-    "has_optionality": false,
+    "has_optionality": true,
     "has_sinking_schedule": false,
     "has_floating_rate": false
 }
@@ -245,48 +249,48 @@ An object containing various fixed income risk analytics measures for the specif
 ##### Example
 ```python
 analytics = finx.get_security_analytics(
-    'USQ98418AH10', 
-    as_of_date='2020-09-14', 
-    price=100)
+    '655664AP5', 
+    as_of_date='2017-12-19', 
+    price=102.781)
 print(json.dumps(analytics, indent=4))
 ```
 ###### Output
 ```json5
 {
-    "security_id": "USQ98418AH10",
-    "as_of_date": "2020-09-14T00:00:00Z",
-    "price": 100.0,
-    "convexity_par": 0.0002,
-    "dur_to_worst": 0.0218,
-    "dur_to_worst_ann": 0.0214,
-    "eff_dur_par": 0.0222,
-    "eff_dur_spot": 0.0222,
-    "local_dur": 0.0214,
-    "macaulay_dur": 0.0222,
-    "macaulay_dur_to_worst": 0.0222,
-    "modified_dur": 0.0218,
-    "modified_dur_ann": 0.0214,
-    "libor_oas": 0.0369,
-    "oas": 0.0382,
-    "yield_to_maturity_ann": 0.04,
-    "yield_to_option": 0.0396,
-    "yield_value_32": 0.014,
-    "spread_dur": 0.0222,
-    "accrued_interest": 1.9111,
-    "asset_swap_spread": 0.0373,
-    "average_life": 0.022222222222222195,
+    "security_id": "655664AP5",
+    "as_of_date": "2017-12-19T00:00:00Z",
+    "price": 102.781,
+    "convexity_par": -1.4169,
+    "dur_to_worst": 3.241,
+    "dur_to_worst_ann": 3.4508,
+    "eff_dur_par": 3.3744,
+    "eff_dur_spot": 3.3744,
+    "local_dur": 3.4508,
+    "macaulay_dur": 3.5628,
+    "macaulay_dur_to_worst": 3.2924,
+    "modified_dur": 3.5063,
+    "modified_dur_ann": 3.4508,
+    "libor_oas": 0.0099,
+    "oas": 0.0113,
+    "yield_to_maturity_ann": 0.0325,
+    "yield_to_option": 0.0317,
+    "yield_value_32": 0.0001,
+    "spread_dur": 3.2951,
+    "accrued_interest": 0.7111111111111111,
+    "asset_swap_spread": 0.0102,
+    "average_life": 3.5722222222222224,
     "coupon_rate": 4.0,
-    "current_yield": 0.04,
+    "current_yield": 0.0389,
     "discount_margin": -9999,
-    "convexity_spot": 0.0002,
-    "dv01": 0.0002,
-    "maturity_years": 0.0222,
-    "nominal_spread": 0.0386,
-    "stated_maturity_years": 0.0222,
-    "yield_to_maturity": 0.0396,
-    "yield_to_put": 0.0396,
+    "convexity_spot": -1.4178,
+    "dv01": 0.0363,
+    "maturity_years": 3.8222,
+    "nominal_spread": 0.0114,
+    "stated_maturity_years": 3.8222,
+    "yield_to_maturity": 0.0322,
+    "yield_to_put": 0.0322,
     "annual_yield": 0.0404,
-    "zvo": 0.0382
+    "zvo": 0.0113
 }
 ```
 
@@ -308,26 +312,126 @@ An object containing a vector time series of cash flow dates and corresponding a
 ##### Example
 ```python
 cash_flows = finx.get_security_cash_flows(
-    'USQ98418AH10', 
-    as_of_date='2020-09-14', 
-    price=100)
+    '655664AP5', 
+    as_of_date='2017-12-19', 
+    price=102.781)
 print(json.dumps(cash_flows, indent=4))
 ```
 ###### Output
 ```json5
 {
-    "security_id": "USQ98418AH10",
-    "as_of_date": "2020-09-14",
+    "security_id": "655664AP5",
+    "as_of_date": "2017-12-19",
     "cash_flows": [
+        {
+            "total_cash_flows": 2.0,
+            "interest_cash_flows": 2.0,
+            "other_principal_cash_flows": 0.0,
+            "principal_cash_flows": 0.0,
+            "call_cash_flows": 0.0,
+            "put_cash_flows": 0.0,
+            "accrued_interest": 0.0,
+            "cash_flow_date": "2018-04-15"
+        },
+        {
+            "total_cash_flows": 2.0,
+            "interest_cash_flows": 2.0,
+            "other_principal_cash_flows": 0.0,
+            "principal_cash_flows": 0.0,
+            "call_cash_flows": 0.0,
+            "put_cash_flows": 0.0,
+            "accrued_interest": 0.0,
+            "cash_flow_date": "2018-10-15"
+        },
+        {
+            "total_cash_flows": 2.0,
+            "interest_cash_flows": 2.0,
+            "other_principal_cash_flows": 0.0,
+            "principal_cash_flows": 0.0,
+            "call_cash_flows": 0.0,
+            "put_cash_flows": 0.0,
+            "accrued_interest": 0.0,
+            "cash_flow_date": "2019-04-15"
+        },
+        {
+            "total_cash_flows": 2.0,
+            "interest_cash_flows": 2.0,
+            "other_principal_cash_flows": 0.0,
+            "principal_cash_flows": 0.0,
+            "call_cash_flows": 0.0,
+            "put_cash_flows": 0.0,
+            "accrued_interest": 0.0,
+            "cash_flow_date": "2019-10-15"
+        },
+        {
+            "total_cash_flows": 2.0,
+            "interest_cash_flows": 2.0,
+            "other_principal_cash_flows": 0.0,
+            "principal_cash_flows": 0.0,
+            "call_cash_flows": 0.0,
+            "put_cash_flows": 0.0,
+            "accrued_interest": 0.0,
+            "cash_flow_date": "2020-04-15"
+        },
+        {
+            "total_cash_flows": 2.0,
+            "interest_cash_flows": 2.0,
+            "other_principal_cash_flows": 0.0,
+            "principal_cash_flows": 0.0,
+            "call_cash_flows": 0.0,
+            "put_cash_flows": 0.0,
+            "accrued_interest": 0.0,
+            "cash_flow_date": "2020-10-15"
+        },
+        {
+            "total_cash_flows": 2.0,
+            "interest_cash_flows": 2.0,
+            "other_principal_cash_flows": 0.0,
+            "principal_cash_flows": 0.0,
+            "call_cash_flows": 0.0,
+            "put_cash_flows": 0.0,
+            "accrued_interest": 0.0,
+            "cash_flow_date": "2021-04-15"
+        },
+        {
+            "total_cash_flows": 0.0,
+            "interest_cash_flows": 0.0,
+            "other_principal_cash_flows": 0.0,
+            "principal_cash_flows": 0.0,
+            "call_cash_flows": 100.0,
+            "put_cash_flows": 0.0,
+            "accrued_interest": 1.0,
+            "cash_flow_date": "2021-07-15"
+        },
+        {
+            "total_cash_flows": 0.0,
+            "interest_cash_flows": 0.0,
+            "other_principal_cash_flows": 0.0,
+            "principal_cash_flows": 0.0,
+            "call_cash_flows": 100.0,
+            "put_cash_flows": 0.0,
+            "accrued_interest": 1.3333333333333333,
+            "cash_flow_date": "2021-08-15"
+        },
+        {
+            "total_cash_flows": 0.0,
+            "interest_cash_flows": 0.0,
+            "other_principal_cash_flows": 0.0,
+            "principal_cash_flows": 0.0,
+            "call_cash_flows": 100.0,
+            "put_cash_flows": 0.0,
+            "accrued_interest": 1.6666666666666667,
+            "cash_flow_date": "2021-09-15"
+        },
         {
             "total_cash_flows": 102.0,
             "interest_cash_flows": 2.0,
             "other_principal_cash_flows": 0.0,
             "principal_cash_flows": 100.0,
-            "call_cash_flows": 0.0,
+            "call_cash_flows": 100.0,
             "put_cash_flows": 0.0,
             "accrued_interest": 0.0,
-            "cash_flow_date": "2020-09-22"
+            "cash_flow_date": "2021-10-15"
         }
     ]
 }
