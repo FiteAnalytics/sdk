@@ -12,7 +12,7 @@ setup(
     url='https://github.com/FiteAnalytics/sdk',
     install_requires=[
         'PyYAML',
-        'aiohttp==3.7.4.post0',
+        'aiohttp',
     ],
     # include_package_data is needed to reference MANIFEST.in
     include_package_data=True,
