@@ -5,19 +5,16 @@
       <sourceFolder url="file://$MODULE_DIR$" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/tmp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/finx_api/examples" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/finx_api" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/python" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/node" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/python/finx_api" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/node/finx_api" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/python/examples" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/finx/examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/node/examples" isTestSource="false" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
   <component name="TestRunnerService">
-    <option name="projectConfiguration" value="pytest" />
     <option name="PROJECT_TEST_RUNNER" value="pytest" />
   </component>
 </module>

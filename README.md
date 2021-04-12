@@ -91,9 +91,10 @@ pip3 install -r requirements.txt
 Returns a class object with member functions for invoking the various API methods
 
 ##### Example
+
 ```python
 import json
-from finx_api.finx import FinX
+from finx.finx_api import FinX
 
 # YAML configuration file
 finx = FinX(yaml_path='path/to/finx_config.yml')

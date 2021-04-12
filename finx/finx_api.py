@@ -1,6 +1,6 @@
 #! Python
 """
-finx.py
+finx_api.py
 """
 import yaml
 import asyncio
@@ -27,20 +27,10 @@ class __SyncFinX:
         self.__api_key = kwargs.get('finx_api_key')
         self.__api_url = kwargs.get('finx_api_endpoint')
         if self.__api_key is None:
-            yaml_path = kwargs.get('yaml_path')
-            if yaml_path is not None:
-                config = yaml.safe_load(open(yaml_path))
-                self.__api_key = config.get('FINX_API_KEY')
-                self.__api_url = config.get('FINX_API_ENDPOINT')
-            else:
-                env_path = kwargs.get('env_path')
-                if env_path is not None:
-                    try:
-                        load_dotenv(env_path)
-                    except Exception as e:
-                        print(f'Could not load .env file at {env_path}: {e}')
-                self.__api_key = getenv('FINX_API_KEY')
-                self.__api_url = getenv('FINX_API_ENDPOINT')
+            yaml_path = './finx_config.yml'
+            config = yaml.safe_load(open(yaml_path))
+            self.__api_key = config['identity']['finx_api_key']
+            self.__api_url = config['endpoints']['finx_api_endpoint']
         if self.__api_key is None:
             raise Exception('API key not found')
         if self.__api_url is None:
@@ -240,3 +230,11 @@ def FinX(**kwargs):
     :keyword asyncio: bool (default False)
     """
     return __AsyncFinx(**kwargs) if kwargs.get('asyncio') else __SyncFinX(**kwargs)
+
+
+def set_config(finx_key):
+    with open('./finx_config.yml', 'r') as yml:
+        settings = yaml.load(yml)
+        settings['identity']['finx_key'] = finx_key
+    with open(self.finx_conf_path, 'w') as yml:
+        yaml.dump(settings, yml)
