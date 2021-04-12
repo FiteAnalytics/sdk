@@ -11,7 +11,8 @@ from dotenv import load_dotenv
 from concurrent.futures import ThreadPoolExecutor
 
 API_URL = 'https://sandbox.finx.io/api/'
-CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'finx_config.yml')
+SAMPLE_CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'finx_config.yml')
+CONFIG_PATH = os.environ.get('FINX_CONFIG_PATH')
 
 
 class __SyncFinX:
@@ -31,6 +32,12 @@ class __SyncFinX:
         self.__api_url = kwargs.get('finx_api_endpoint')
         if self.__api_key is None:
             yaml_path = CONFIG_PATH
+            if yaml_path is None:
+                exception_string = 'Environment variable "FINX_CONFIG_PATH" not set.\n\n'
+                exception_string += 'Please set this to be the absolute path for the finx_config.yml\n\n'
+                exception_string += 'Ensure the file follows this format: \n{}\n\n'.format(
+                    yaml.safe_load(open(SAMPLE_CONFIG_PATH)))
+                raise Exception(exception_string)
             config = yaml.safe_load(open(yaml_path))
             self.__api_key = config['identity']['finx_api_key']
             self.__api_url = config['endpoints']['finx_api_endpoint']
@@ -233,11 +240,3 @@ def FinX(**kwargs):
     :keyword asyncio: bool (default False)
     """
     return __AsyncFinx(**kwargs) if kwargs.get('asyncio') else __SyncFinX(**kwargs)
-
-
-def set_config(finx_key):
-    with open(CONFIG_PATH, 'r') as yml:
-        settings = yaml.load(yml)
-        settings['identity']['finx_key'] = finx_key
-    with open(CONFIG_PATH, 'w') as yml:
-        yaml.dump(settings, yml)

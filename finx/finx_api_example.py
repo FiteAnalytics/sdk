@@ -11,11 +11,9 @@ from fiteanalytics import finx_api
 if __name__ == "__main__":
     """
     optional command line arguments:
-    argv[0] = finx_api_key
-    argv[1] = security_id
-    argv[2] = as_of_date
+    argv[0] = security_id
+    argv[1] = as_of_date
     """
-    finx_api.set_config(sys.argv[0] if len(sys.argv) > 0 else input('Enter your api key: '))
 
     # Initialize client
     finx_client = finx_api.FinX()
@@ -25,6 +23,7 @@ if __name__ == "__main__":
     api_methods = finx_client.get_api_methods()
     print(json.dumps(api_methods, indent=4))
 
+    # GET (OPTIONAL) COMMAND LINE ARGUMENTS
     security_id = sys.argv[1] if len(sys.argv) > 1 else 'USQ98418AH10'
     as_of_date = sys.argv[2] if len(sys.argv) > 2 else '2020-09-14'
 
