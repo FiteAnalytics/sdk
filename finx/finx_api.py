@@ -7,7 +7,6 @@ import yaml
 import asyncio
 import aiohttp
 import requests
-from dotenv import load_dotenv
 from concurrent.futures import ThreadPoolExecutor
 
 DEFAULT_API_URL = 'https://sandbox.finx.io/api/'
