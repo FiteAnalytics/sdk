@@ -33,10 +33,10 @@ class __SyncFinX:
         if self.__api_key is None:
             yaml_path = CONFIG_PATH
             if yaml_path is None:
-                exception_string = 'Environment variable "FINX_CONFIG_PATH" not set.\n\n'
-                exception_string += 'Please set this to be the absolute path for the finx_config.yml\n\n'
-                exception_string += 'Ensure the file follows this format: \n{}\n\n'.format(
-                    yaml.safe_load(open(SAMPLE_CONFIG_PATH)))
+                with open(SAMPLE_CONFIG_PATH, 'r') as sample_config:
+                    exception_string = 'Environment variable "FINX_CONFIG_PATH" not set.\n\n'
+                    exception_string += 'Please set this to be the absolute path for the finx_config.yml\n\n'
+                    exception_string += 'Ensure the file follows this format: \n{}\n\n'.format(sample_config.read())
                 raise Exception(exception_string)
             config = yaml.safe_load(open(yaml_path))
             self.__api_key = config['identity']['finx_api_key']

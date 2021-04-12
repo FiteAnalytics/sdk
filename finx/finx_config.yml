@@ -5,4 +5,4 @@ version: 1
 identity:
   finx_api_key: 'Not Authorized'
 endpoints:
-  finx_api_endpoint: 'https://sandbox.finx.io/'
+  finx_api_endpoint: 'https://sandbox.finx.io/api/'
