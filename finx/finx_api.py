@@ -233,7 +233,7 @@ def FinX(**kwargs):
 
 
 def set_config(finx_key):
-    with open('./finx_config.yml', 'r') as yml:
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'finx_config.yml'), 'r') as yml:
         settings = yaml.load(yml)
         settings['identity']['finx_key'] = finx_key
     with open(self.finx_conf_path, 'w') as yml:
