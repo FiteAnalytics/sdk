@@ -2,11 +2,11 @@
 """
 finx_api.py
 """
+import os
 import yaml
 import asyncio
 import aiohttp
 import requests
-from os import getenv
 from dotenv import load_dotenv
 from concurrent.futures import ThreadPoolExecutor
 
