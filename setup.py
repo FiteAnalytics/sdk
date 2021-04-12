@@ -2,8 +2,8 @@ from setuptools import setup, find_packages
 
 setup(
     name='fiteanalytics',
-    description='FinX Api SDK',
-    version='0.0.2',
+    description='FinX API SDK',
+    version='0.0.3',
     author='Fite Analytics LLC',
     author_email='info@fiteanalytics.com',
     classifiers=['License :: OSI Approved :: GNU Affero General Public License v3',],

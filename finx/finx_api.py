@@ -10,6 +10,9 @@ import requests
 from dotenv import load_dotenv
 from concurrent.futures import ThreadPoolExecutor
 
+API_URL = 'https://sandbox.finx.io/api/'
+CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'finx_config.yml')
+
 
 class __SyncFinX:
 
@@ -27,14 +30,14 @@ class __SyncFinX:
         self.__api_key = kwargs.get('finx_api_key')
         self.__api_url = kwargs.get('finx_api_endpoint')
         if self.__api_key is None:
-            yaml_path = './finx_config.yml'
+            yaml_path = CONFIG_PATH
             config = yaml.safe_load(open(yaml_path))
             self.__api_key = config['identity']['finx_api_key']
             self.__api_url = config['endpoints']['finx_api_endpoint']
         if self.__api_key is None:
             raise Exception('API key not found')
         if self.__api_url is None:
-            self.__api_url = 'https://sandbox.finx.io/api/'
+            self.__api_url = API_URL
         self.__session = requests.session()
 
     def get_api_key(self):
@@ -233,8 +236,15 @@ def FinX(**kwargs):
 
 
 def set_config(finx_key):
-    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'finx_config.yml'), 'r') as yml:
-        settings = yaml.load(yml)
-        settings['identity']['finx_key'] = finx_key
-    with open(self.finx_conf_path, 'w') as yml:
+    try:
+        with open(CONFIG_PATH, 'r') as yml:
+            settings = yaml.load(yml)
+            settings['identity']['finx_key'] = finx_key
+    except:
+        settings = dict(
+            language='en',
+            version=1,
+            identity=dict(finx_api_key='{}'.format(finx_key)),
+            endpoints=dict(finx_api_endpoint=API_URL))
+    with open(CONFIG_PATH, 'w') as yml:
         yaml.dump(settings, yml)
