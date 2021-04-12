@@ -5,7 +5,7 @@ finx_api_example.py
 import json
 import sys
 
-from finx import finx_api
+from fiteanalytics import finx_api
 
 
 if __name__ == "__main__":

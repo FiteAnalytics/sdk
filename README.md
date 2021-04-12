@@ -94,7 +94,7 @@ Returns a class object with member functions for invoking the various API method
 
 ```python
 import json
-from finx.finx_api import FinX
+from fiteanalytics.finx_api import FinX
 
 # YAML configuration file
 finx = FinX(yaml_path='path/to/finx_config.yml')
