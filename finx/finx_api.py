@@ -32,7 +32,7 @@ class __SyncFinX:
             self.__api_key = os.environ.get('FINX_API_KEY')
             self.__api_url = os.environ.get('FINX_API_ENDPOINT')
         if self.__api_key is None:
-            raise Exception('API key not found - please include as a kwarg OR set the environment variable: FINX_API_KEY')
+            raise Exception('API key not found - please include as a kwarg "finx_api_key" OR set the environment variable: FINX_API_KEY')
         if self.__api_url is None:
             self.__api_url = DEFAULT_API_URL
         self.__session = requests.session()
