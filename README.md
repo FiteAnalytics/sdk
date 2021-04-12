@@ -27,86 +27,82 @@ require three fields to validate your credentials: `VERSION`, `FINX_API_KEY` and
 Note that these keys are case sensitive. The SDK facilitates two distinct methods for securely passing credentials to 
 the API clients.
 
-The first method is via a YAML configuration file containing your credentials. You may give the path to this file when 
-initializing the client:
-
-### YAML configuration syntax
-```yaml
-VERSION: 1
+The first method looks for the required credentials in environment variables. The following should be set before running.
+### ENVIRONMENT VARIABLES
+```
 FINX_API_KEY: my_finx_key
 FINX_API_ENDPOINT: https://sandbox.finx.io/api/
 ```
-The second method looks for the required credentials in environment variables. If a .env file is specified in the client 
-initialization, the .env file will be loaded before checking the variables.
-### .env file syntax
-```
-VERSION=1
-FINX_API_KEY=my_finx_key
-FINX_API_ENDPOINT=https://sandbox.finx.io/api/
+
+The second method is by manually passing kwargs into the constructor as shown below.
+### KWARGS
+```python
+from fiteanalytics import finx_api
+
+finx_client = finx_api.FinXClient(finx_api_key='API_KEY')
 ```
 
 ### SDK Installation
 
-For the time being, please clone this repository into your project to begin using the SDK.
+The SDK can be installed via pip for versions >= 2.0.0
 ```shell script
-git clone https://github.com/FiteAnalytics/sdk
+pip3 install fiteanalytics==2.0.0
 ```
 
 ### Quickstart
 
-To see the SDK in action, we've included example scripts for each implementation
-
-#### Node.js
-```shell script
-cd ~/sdk/node/examples
-node finx_api_example.js
-```
+The following is an example of how to import and use the sdk.
 
 #### Python
-```shell script
-cd ~/sdk/python/examples
-python3 finx_api_example.py
-```
-
-### Python SDK
-
-The Python SDK is implemented as a wrapper class with member functions for invoking the various API methods. Optional 
-arguments for the security analytics and security cash flows functions must be specified as key word arguments.
-
-Ensure you have installed the required packages listed in requirements.txt:
-```shell script
-cd ~/sdk/python
-pip3 install -r requirements.txt
-```
-
-#### Initialization
-
-##### Inputs
-
-1. YAML configuration file formatted as described above (optional)
-2. .env file formatted as described above (optional)
-3. asyncio keyword to initialize an asynchronous client (optional) 
-##### Output
-
-Returns a class object with member functions for invoking the various API methods
-
-##### Example
-
 ```python
+#! Python
+"""
+finx_api_example.py
+"""
 import json
-from fiteanalytics.finx_api import FinX
+import sys
 
-# YAML configuration file
-finx = FinX(yaml_path='path/to/finx_config.yml')
+from fiteanalytics import finx_api
 
-# .env file
-finx = FinX(env_path='path/to/.env')
 
-# No file (will check environment variables)
-finx = FinX()
+if __name__ == "__main__":
+    """
+    optional command line arguments:
+    argv[0] = security_id
+    argv[1] = as_of_date
+    """
 
-# Asynchronous client (all functions are invoked as coroutines)
-finx = FinX(asyncio=True)
+    # Initialize client
+    # No file (will check environment variables)
+    finx = finx_api.FinXClient()
+
+    # Asynchronous client (all functions are invoked as coroutines)
+    async_finx = finx_api.FinXClient(asyncio=True)
+
+    # Get API methods
+    print('\n*********** API Methods ***********')
+    api_methods = finx_client.get_api_methods()
+    print(json.dumps(api_methods, indent=4))
+
+    # GET (OPTIONAL) COMMAND LINE ARGUMENTS
+    security_id = sys.argv[1] if len(sys.argv) > 1 else 'USQ98418AH10'
+    as_of_date = sys.argv[2] if len(sys.argv) > 2 else '2020-09-14'
+
+    # Get security reference data
+    print('\n*********** Security Reference Data ***********')
+    reference_data = finx_client.get_security_reference_data(security_id, as_of_date)
+    print(json.dumps(reference_data, indent=4))
+
+    # Get security analytics
+    print('\n*********** Security Analytics ***********')
+    analytics = finx_client.get_security_analytics(security_id, as_of_date=as_of_date, price=100)
+    print(json.dumps(analytics, indent=4))
+
+    # Get projected cash flows
+    print('\n*********** Security Cash Flows ***********')
+    cash_flows = finx_client.get_security_cash_flows(security_id, as_of_date=as_of_date, price=100)
+    print(json.dumps(cash_flows, indent=4))
+
 ```
 
 #### Get API Methods
@@ -121,7 +117,7 @@ A object mapping each available API method to their respective required and opti
 
 ##### Example
 ```python
-api_methods = finx.get_api_methods()
+api_methods = finx_client.get_api_methods()
 print(json.dumps(api_methods, indent=4))                      
 ```
 ###### Output
@@ -194,7 +190,7 @@ An object containing various descriptive fields for the specified security
 
 ##### Example
 ```python
-reference_data = finx.get_security_reference_data(
+reference_data = finx_client.get_security_reference_data(
     '655664AP5', 
     '2017-12-19')
 print(json.dumps(reference_data, indent=4))
@@ -249,7 +245,7 @@ An object containing various fixed income risk analytics measures for the specif
 
 ##### Example
 ```python
-analytics = finx.get_security_analytics(
+analytics = finx_client.get_security_analytics(
     '655664AP5', 
     as_of_date='2017-12-19', 
     price=102.781)
@@ -312,7 +308,7 @@ An object containing a vector time series of cash flow dates and corresponding a
 
 ##### Example
 ```python
-cash_flows = finx.get_security_cash_flows(
+cash_flows = finx_client.get_security_cash_flows(
     '655664AP5', 
     as_of_date='2017-12-19', 
     price=102.781)
@@ -453,8 +449,8 @@ A list of corresponding results for each security ID specified
 
 ##### Example
 ```python
-reference_data = finx.batch(
-    finx.get_security_reference_data, 
+reference_data = finx_client.batch(
+    finx_client.get_security_reference_data, 
     {
         'USQ98418AH10': {
             'as_of_date': '2020-09-14'
