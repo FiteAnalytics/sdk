@@ -236,15 +236,8 @@ def FinX(**kwargs):
 
 
 def set_config(finx_key):
-    try:
-        with open(CONFIG_PATH, 'r') as yml:
-            settings = yaml.load(yml)
-            settings['identity']['finx_key'] = finx_key
-    except:
-        settings = dict(
-            language='en',
-            version=1,
-            identity=dict(finx_api_key='{}'.format(finx_key)),
-            endpoints=dict(finx_api_endpoint=API_URL))
+    with open(CONFIG_PATH, 'r') as yml:
+        settings = yaml.load(yml)
+        settings['identity']['finx_key'] = finx_key
     with open(CONFIG_PATH, 'w') as yml:
         yaml.dump(settings, yml)

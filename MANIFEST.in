@@ -1,2 +1,2 @@
 include README.md
-include finx/admin/finx.conf
+include finx/finx_config.yml
