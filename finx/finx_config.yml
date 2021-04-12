@@ -1,8 +1,0 @@
-# conf.yml : for instructions please see https://finx.io/docs
-# this content is used by finx/admin/config.py
-language: en
-version: 1
-identity:
-  finx_api_key: 'Not Authorized'
-endpoints:
-  finx_api_endpoint: 'https://sandbox.finx.io/api/'

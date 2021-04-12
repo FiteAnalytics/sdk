@@ -10,9 +10,7 @@ import requests
 from dotenv import load_dotenv
 from concurrent.futures import ThreadPoolExecutor
 
-API_URL = 'https://sandbox.finx.io/api/'
-SAMPLE_CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'finx_config.yml')
-CONFIG_PATH = os.environ.get('FINX_CONFIG_PATH')
+DEFAULT_API_URL = 'https://sandbox.finx.io/api/'
 
 
 class __SyncFinX:
@@ -31,20 +29,12 @@ class __SyncFinX:
         self.__api_key = kwargs.get('finx_api_key')
         self.__api_url = kwargs.get('finx_api_endpoint')
         if self.__api_key is None:
-            yaml_path = CONFIG_PATH
-            if yaml_path is None:
-                with open(SAMPLE_CONFIG_PATH, 'r') as sample_config:
-                    exception_string = 'Environment variable "FINX_CONFIG_PATH" not set.\n\n'
-                    exception_string += 'Please set this to be the absolute path for the finx_config.yml\n\n'
-                    exception_string += 'Ensure the file follows this format: \n{}\n\n'.format(sample_config.read())
-                raise Exception(exception_string)
-            config = yaml.safe_load(open(yaml_path))
-            self.__api_key = config['identity']['finx_api_key']
-            self.__api_url = config['endpoints']['finx_api_endpoint']
+            self.__api_key = os.environ.get('FINX_API_KEY')
+            self.__api_url = os.environ.get('FINX_API_ENDPOINT')
         if self.__api_key is None:
-            raise Exception('API key not found')
+            raise Exception('API key not found - please include as a kwarg OR set the environment variable: FINX_API_KEY')
         if self.__api_url is None:
-            self.__api_url = API_URL
+            self.__api_url = DEFAULT_API_URL
         self.__session = requests.session()
 
     def get_api_key(self):
@@ -234,7 +224,7 @@ class __AsyncFinx(__SyncFinX):
         return await asyncio.gather(*tasks)
 
 
-def FinX(**kwargs):
+def FinXClient(**kwargs):
     """
     Unified interface to spawn FinX client. Use keyword asyncio=True to specify the async client
     :keyword asyncio: bool (default False)

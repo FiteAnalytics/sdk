@@ -5,7 +5,7 @@ finx_api_example.py
 import json
 import sys
 
-from fiteanalytics import finx_api
+from finx import finx_api
 
 
 if __name__ == "__main__":
@@ -16,7 +16,7 @@ if __name__ == "__main__":
     """
 
     # Initialize client
-    finx_client = finx_api.FinX()
+    finx_client = finx_api.FinXClient()
 
     # Get API methods
     print('\n*********** API Methods ***********')
