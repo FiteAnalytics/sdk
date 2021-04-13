@@ -16,7 +16,7 @@ if __name__ == "__main__":
     """
 
     # Initialize client
-    finx_client = finx_api.FinXClient()
+    finx_client = finx_api.FinX()
 
     # Get API methods
     print('\n*********** API Methods ***********')
