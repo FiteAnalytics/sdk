@@ -19,7 +19,7 @@ DEFAULT_API_URL = 'https://sandbox.finx.io/api/'
 
 class LRUCache(OrderedDict):
     """
-    Least Recently Used (LRU) cache implementation
+    Least Recently Used (LRU) cache
     """
     def __init__(self, maxsize=128, *args, **kwds):
         self.maxsize = maxsize
@@ -79,9 +79,8 @@ class __SyncFinX:
         return '_'.join([f'{key}:{params[key]}' for key in sorted(params.keys()) if key != 'finx_api_key'])
 
     def clear_cache(self):
-        del self.cache
+        self.cache.clear()
         collect()
-        self.cache = LRUCache(self.max_cache_size)
         return None
 
     def __dispatch(self, request_body, **kwargs):
@@ -95,13 +94,13 @@ class __SyncFinX:
         if cached_response is not None:
             print('Found in cache')
             return cached_response
-        response = self.session.post(self.__api_url, data=request_body).json()
-        error = response.get('error')
+        data = self.session.post(self.__api_url, data=request_body).json()
+        error = data.get('error')
         if error is not None:
             print(f'API returned error: {error}')
-            return response
-        self.cache[cache_key] = response['data']
-        return response['data']
+            return data
+        self.cache[cache_key] = data
+        return data
 
     def get_api_methods(self):
         """
@@ -208,13 +207,13 @@ class __AsyncFinx(__SyncFinX):
             print('Found in cache')
             return cached_response
         async with self.session.post(self.__api_url, data=request_body) as response:
-            response = await response.json()
-            error = response.get('error')
+            data = await response.json()
+            error = data.get('error')
             if error is not None:
                 print(f'API returned error: {error}')
                 return response
-            self.cache[cache_key] = response['data']
-            return response['data']
+            self.cache[cache_key] = data
+            return data
 
     async def get_api_methods(self):
         """
@@ -320,6 +319,7 @@ class __FinXSocket(WebSocketApp):
         if self.max_cache_size is None:
             self.max_cache_size = 100
         self.cache = LRUCache(self.max_cache_size)
+        self.executor = ThreadPoolExecutor()
 
         def on_open(socket):
             try:
@@ -372,9 +372,8 @@ class __FinXSocket(WebSocketApp):
         return '_'.join([f'{key}:{params[key]}' for key in sorted(params.keys())])
 
     def clear_cache(self):
-        del self.cache
+        self.cache.clear()
         collect()
-        self.cache = LRUCache(self.max_cache_size)
         return None
 
     def await_result(self, cache_key, callback, **kwargs):
@@ -399,7 +398,7 @@ class __FinXSocket(WebSocketApp):
             return cached_response
         self.send(json.dumps(payload))
         if callable(callback):
-            ThreadPoolExecutor().submit(self.await_result, cache_key, callback, **kwargs)
+            self.executor.submit(self.await_result, cache_key, callback, **kwargs)
         return cache_key
 
     def get_api_methods(self, **kwargs):
@@ -465,7 +464,7 @@ class __FinXSocket(WebSocketApp):
         :param security_args: Dict mapping dict mapping security_id (string) to a dict of key word arguments
         """
         assert function != self.get_api_methods and type(security_args) is dict and len(security_args) < 100
-        return [function(function, security_id=security_id, **kwargs) for security_id, kwargs in security_args.items()]
+        return [function(security_id, **kwargs) for security_id, kwargs in security_args.items()]
 
 
 def FinX(**kwargs):
