@@ -55,11 +55,11 @@ The following is an example of how to import and use the SDK.
 #### Python
 ```python
 import json
-from fiteanalytics import finx_api
+from fiteanalytics.finx_api import FinX
 
 # Initialize synchronous client with no arguments - 
 # checks environment variables for credentials
-finx = finx_api.FinX()
+finx = FinX()
 
 # Get API methods
 print('\n*********** API Methods ***********')
@@ -113,14 +113,16 @@ using callback functions. Retrieving results relies on this functionality.
 Makes blocking synchronous requests in each function. 
 ##### Initialization
 ```python
-finx = finx_api.FinX()
+finx = FinX()
+# or 
+finx = FinX(kind='sync')
 ```
 
 #### Asynchronous HTTP Client
 Capable of dispatching multiple requests concurrently using asyncio.
 ##### Initialization
 ```python
-finx = finx_api.FinX('async')
+finx = FinX(kind='async')
 ``` 
 All functions are asynchronous and must therefore be awaited.
 
@@ -129,7 +131,7 @@ WebSocket client which runs a WebSocket connection in a separate thread, capable
 concurrently.
 ##### Initialization
 ```python
-finx = finx_api.FinX('socket')
+finx = FinX(kind='socket')
 ```
 By their nature, WebSockets are asynchronous. Function calls using this client therefore will generally not return 
 the API response unless the request has been cached. If the request has not been cached, the function will return the 
@@ -145,19 +147,20 @@ def my_callback(response, **kwargs):
     print(f'Keyword arguments: {kwargs}')
 
 
-finx = finx_api.FinX('socket')
+finx = FinX(kind='socket')
 finx.get_api_methods(callback=my_callback, my_callback_kwarg='foo')
 ```
 If you prefer not to use the callback functionality or would like to wait for the response before proceeding in your 
 program, you can always use the returned cache key to interact with the cache directly:
 ```python
-finx = finx_api.FinX('socket')
+finx = FinX(kind='socket')
 response = finx.get_api_methods()
 if type(response) is str:
     cache_key = response
     response = None
-    while response is None:
+    while response is None: 
         response = finx.cache.get(cache_key)
+
 print(response)
 ``` 
 
@@ -496,7 +499,7 @@ Output: A list of corresponding results for each security ID specified
 ##### Example
 ```python
 reference_data = finx.batch(
-    finx_client.get_security_reference_data, 
+    finx.get_security_reference_data, 
     {
         'USQ98418AH10': {
             'as_of_date': '2020-09-14'

@@ -11,8 +11,10 @@ setup(
     packages=find_packages(exclude=('*.tests',)),
     url='https://github.com/FiteAnalytics/sdk',
     install_requires=[
-        'PyYAML',
         'aiohttp',
+        'asyncio',
+        'lru',
+        'websocket-client'
     ],
     # include_package_data is needed to reference MANIFEST.in
     include_package_data=True,
