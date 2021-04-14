@@ -29,7 +29,7 @@ if __name__ == "__main__":
 
     # Get security reference data
     print('\n*********** Security Reference Data ***********')
-    reference_data = finx_client.get_security_reference_data(security_id, as_of_date)
+    reference_data = finx_client.get_security_reference_data(security_id, as_of_date=as_of_date)
     print(json.dumps(reference_data, indent=4))
 
     # Get security analytics

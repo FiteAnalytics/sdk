@@ -5,7 +5,7 @@ tags: technology, documentation
 
 # Fite Analytics Software Development Kit (SDK)
 
-Fite Analytics offers a free, public, RESTful API with complementary SDK to demo our services.
+Fite Analytics offers a free and public REST API & WebSocket endpoint with a complementary SDK to demo our services.
 Our API currently utilizes API keys for authentication.
 
 ## Introduction
@@ -16,30 +16,29 @@ source of information.
 For questions or comments please contact us [via email](mailto:info@fiteanalytics.com) or on [reddit](https://www.reddit.com/r/fiteanalytics/).
 
 ## FinX API SDK
-The FinX API is a RESTful API endpoint offering rich fixed income analytics calculations, including security reference 
-data, interest rate risk metrics, and projected cash flows. The Fite Analytics SDK offers a client class implementation 
-for a variety of programming languages to wrap access to the API methods. Unless specified otherwise, each language's 
-client implementation consist solely of one implementation file containing all the necessary code to expose the API
-functions.
+The FinX API consists of a RESTful API and a WebSocket endpoint offering rich fixed income analytics calculations, 
+including security reference data, interest rate risk metrics, and projected cash flows. The Fite Analytics SDK offers
+class-based client implementation for a variety of programming languages to wrap access to the API methods.
 
-The FinX API requires an API key for usage (contact us and we will provide one). You may also be provided with a specific URL for accessing services. We 
-require three fields to validate your credentials: `VERSION`, `FINX_API_KEY` and `FINX_API_ENDPOINT`. 
-Note that these keys are case sensitive. The SDK facilitates two distinct methods for securely passing credentials to 
-the API clients.
+The FinX API requires an API key for usage - contact us to obtain your key: <info@fiteanalytics.com>. We require at 
+minimum an API key for authentication. You may also be provided with a specific URL for accessing services - if you do
+do not specify one, the URL will be set to https://sandbox.finx.io/api/. 
+
+The SDK facilitates two distinct methods for securely passing credentials to the API clients.
 
 The first method looks for the required credentials in environment variables. The following should be set before running.
-### ENVIRONMENT VARIABLES
+### Environment Variables
 ```
-FINX_API_KEY: my_finx_key
-FINX_API_ENDPOINT: https://sandbox.finx.io/api/
+export FINX_API_KEY=my_api_key
+export FINX_API_ENDPOINT=my_api_endpoint
 ```
 
-The second method is by manually passing kwargs into the constructor as shown below.
-### KWARGS
+The second method is by manually passing kwargs into the client constructor. We do NOT recommend hard-coding your 
+credentials in your code.
+### Keyword Arguments - handle with care!
 ```python
-from fiteanalytics import finx_api
-
-finx_client = finx_api.FinXClient(finx_api_key='API_KEY')
+:keyword finx_api_key: (string)
+:keyword finx_api_endpoint: (string)
 ```
 
 ### SDK Installation
@@ -51,73 +50,128 @@ pip3 install fiteanalytics==2.0.0
 
 ### Quickstart
 
-The following is an example of how to import and use the sdk.
+The following is an example of how to import and use the SDK.
 
 #### Python
 ```python
-#! Python
-"""
-finx_api_example.py
-"""
 import json
-import sys
-
 from fiteanalytics import finx_api
 
+# Initialize synchronous client with no arguments - 
+# checks environment variables for credentials
+finx = finx_api.FinX()
 
-if __name__ == "__main__":
-    """
-    optional command line arguments:
-    argv[0] = security_id
-    argv[1] = as_of_date
-    """
+# Get API methods
+print('\n*********** API Methods ***********')
+api_methods = finx.get_api_methods()
+print(json.dumps(api_methods, indent=4))
 
-    # Initialize client
-    # No file (will check environment variables)
-    finx = finx_api.FinXClient()
+security_id = 'USQ98418AH10'
+as_of_date = '2020-09-14'
 
-    # Asynchronous client (all functions are invoked as coroutines)
-    async_finx = finx_api.FinXClient(asyncio=True)
+# Get security reference data
+print('\n*********** Security Reference Data ***********')
+reference_data = finx.get_security_reference_data(
+    security_id, 
+    as_of_date=as_of_date)
+print(json.dumps(reference_data, indent=4))
 
-    # Get API methods
-    print('\n*********** API Methods ***********')
-    api_methods = finx_client.get_api_methods()
-    print(json.dumps(api_methods, indent=4))
+# Get security analytics
+print('\n*********** Security Analytics ***********')
+analytics = finx.get_security_analytics(
+    security_id, 
+    as_of_date=as_of_date, 
+    price=100)
+print(json.dumps(analytics, indent=4))
 
-    # GET (OPTIONAL) COMMAND LINE ARGUMENTS
-    security_id = sys.argv[1] if len(sys.argv) > 1 else 'USQ98418AH10'
-    as_of_date = sys.argv[2] if len(sys.argv) > 2 else '2020-09-14'
-
-    # Get security reference data
-    print('\n*********** Security Reference Data ***********')
-    reference_data = finx_client.get_security_reference_data(security_id, as_of_date)
-    print(json.dumps(reference_data, indent=4))
-
-    # Get security analytics
-    print('\n*********** Security Analytics ***********')
-    analytics = finx_client.get_security_analytics(security_id, as_of_date=as_of_date, price=100)
-    print(json.dumps(analytics, indent=4))
-
-    # Get projected cash flows
-    print('\n*********** Security Cash Flows ***********')
-    cash_flows = finx_client.get_security_cash_flows(security_id, as_of_date=as_of_date, price=100)
-    print(json.dumps(cash_flows, indent=4))
-
+# Get projected cash flows
+print('\n*********** Security Cash Flows ***********')
+cash_flows = finx.get_security_cash_flows(
+    security_id, 
+    as_of_date=as_of_date, 
+    price=100)
+print(json.dumps(cash_flows, indent=4))
 ```
+
+## Python SDK
+### Client Types
+The SDK offers three distinct client types for using the FinX API. Each of these clients employs a highly performant 
+Least-Recently-Used (LRU) cache under the hood. You can specify the maximum cache size using the ```max_cache_size``` 
+keyword argument in the constructor - the default is ```100```.
+
+When invoking a function, the client will construct a cache key from the name of the function being called and the 
+parameters being passed. The client then uses this key to check if a response has already been recorded in the cache, 
+and returns the response if so. Otherwise, it dispatches the request to the FinX API and records the response in the 
+cache once it is received. The cache may be cleared using 
+```python
+finx.clear_cache()
+```
+This feature is especially important for the WebSocket client, since responses are received and parsed asynchronously 
+using callback functions. Retrieving results relies on this functionality.
+
+#### Synchronous HTTP Client
+Makes blocking synchronous requests in each function. 
+##### Initialization
+```python
+finx = finx_api.FinX()
+```
+
+#### Asynchronous HTTP Client
+Capable of dispatching multiple requests concurrently using asyncio.
+##### Initialization
+```python
+finx = finx_api.FinX('async')
+``` 
+All functions are asynchronous and must therefore be awaited.
+
+#### WebSocket Client
+WebSocket client which runs a WebSocket connection in a separate thread, capable of dispatching multiple requests 
+concurrently.
+##### Initialization
+```python
+finx = finx_api.FinX('socket')
+```
+By their nature, WebSockets are asynchronous. Function calls using this client therefore will generally not return 
+the API response unless the request has been cached. If the request has not been cached, the function will return the 
+cache key that will be used to store the response in the cache when it is received.
+
+For all of the WebSocket client's methods, the ```callback``` keyword argument may be used to define a function to be 
+executed on the response when it is received, regardless of whether or not it was found in the cache. The function 
+should take the response object as a parameter and optional keyword arguments specified in the original function call. 
+Note that the callback will not block the main thread. Here is an example of its usage:
+```python
+def my_callback(response, **kwargs):
+    print(f'\nCallback got the response: {response}\n')
+    print(f'Keyword arguments: {kwargs}')
+
+
+finx = finx_api.FinX('socket')
+finx.get_api_methods(callback=my_callback, my_callback_kwarg='foo')
+```
+If you prefer not to use the callback functionality or would like to wait for the response before proceeding in your 
+program, you can always use the returned cache key to interact with the cache directly:
+```python
+finx = finx_api.FinX('socket')
+response = finx.get_api_methods()
+if type(response) is str:
+    cache_key = response
+    response = None
+    while response is None:
+        response = finx.cache.get(cache_key)
+print(response)
+``` 
 
 #### Get API Methods
 
-##### Inputs
+```
+Inputs: 
+    :keyword callback: websocket client only
 
-None
-
-##### Output
-
-A object mapping each available API method to their respective required and optional parameters
-
+Output: A object mapping each available API method to their respective required and optional parameters
+```
 ##### Example
 ```python
-api_methods = finx_client.get_api_methods()
+api_methods = finx.get_api_methods()
 print(json.dumps(api_methods, indent=4))                      
 ```
 ###### Output
@@ -177,22 +231,20 @@ print(json.dumps(api_methods, indent=4))
 
 #### Get Security Reference Data
 
-##### Inputs
 
 ```
-:param security_id: string
-:param as_of_date: string as YYYY-MM-DD (optional)
+Inputs:
+    :param security_id: string
+    :keyword as_of_date: string as YYYY-MM-DD (optional)
+    :keyword callback: websocket client only
+
+Output: An object containing various descriptive fields for the specified security
 ```
-
-##### Output
-
-An object containing various descriptive fields for the specified security
-
 ##### Example
 ```python
-reference_data = finx_client.get_security_reference_data(
+reference_data = finx.get_security_reference_data(
     '655664AP5', 
-    '2017-12-19')
+    as_of_date='2017-12-19')
 print(json.dumps(reference_data, indent=4))
 ```
 ###### Output
@@ -224,28 +276,26 @@ print(json.dumps(reference_data, indent=4))
 
 #### Get Security Analytics
 
-##### Inputs
-
 ```
-:param security_id: string
-:keyword as_of_date: string as YYYY-MM-DD (optional)
-:keyword price: float (optional)
-:keyword volatility: float (optional)
-:keyword yield_shift: int (basis points, optional)
-:keyword shock_in_bp: int (basis points, optional)
-:keyword horizon_months: uint (optional)
-:keyword income_tax: float (optional)
-:keyword cap_gain_short_tax: float (optional)
-:keyword cap_gain_long_tax: float (optional)
+Inputs:
+    :param security_id: string
+    :keyword as_of_date: string as YYYY-MM-DD (optional)
+    :keyword price: float (optional)
+    :keyword volatility: float (optional)
+    :keyword yield_shift: int (basis points, optional)
+    :keyword shock_in_bp: int (basis points, optional)
+    :keyword horizon_months: uint (optional)
+    :keyword income_tax: float (optional)
+    :keyword cap_gain_short_tax: float (optional)
+    :keyword cap_gain_long_tax: float (optional)
+    :keyword callback: websocket client only
+
+Output: An object containing various fixed income risk analytics measures for the specified security and parameters
 ```
-
-##### Output
-
-An object containing various fixed income risk analytics measures for the specified security and parameters
 
 ##### Example
 ```python
-analytics = finx_client.get_security_analytics(
+analytics = finx.get_security_analytics(
     '655664AP5', 
     as_of_date='2017-12-19', 
     price=102.781)
@@ -293,22 +343,20 @@ print(json.dumps(analytics, indent=4))
 
 #### Get Security Cash Flows
 
-##### Inputs
-
 ```
-:param security_id: string
-:keyword as_of_date: string as YYYY-MM-DD (optional)
-:keyword price: float (optional)
-:keyword shock_in_bp: int (optional)
+Inputs:
+    :param security_id: string
+    :keyword as_of_date: string as YYYY-MM-DD (optional)
+    :keyword price: float (optional)
+    :keyword shock_in_bp: int (optional)
+    :keyword callback: websocket client only
+
+Output: An object containing a vector time series of cash flow dates and corresponding amounts
 ```
-
-##### Output
-
-An object containing a vector time series of cash flow dates and corresponding amounts
 
 ##### Example
 ```python
-cash_flows = finx_client.get_security_cash_flows(
+cash_flows = finx.get_security_cash_flows(
     '655664AP5', 
     as_of_date='2017-12-19', 
     price=102.781)
@@ -436,20 +484,18 @@ print(json.dumps(cash_flows, indent=4))
 
 #### Batch
 
-##### Inputs
-
 ```
-:param function: Client member function to invoke for each security
-:param security_args: Dict mapping dict mapping security_id (string) to a dict of key word arguments 
+Inputs:
+    :param function: Client member function to invoke for each security
+    :param security_args: Object mapping security_id (string) to an object of key word arguments for the function 
+    :keyword callback: websocket client only    
+
+Output: A list of corresponding results for each security ID specified
 ```
-
-##### Output
-
-A list of corresponding results for each security ID specified
 
 ##### Example
 ```python
-reference_data = finx_client.batch(
+reference_data = finx.batch(
     finx_client.get_security_reference_data, 
     {
         'USQ98418AH10': {
@@ -535,14 +581,8 @@ Returns a class object with member functions for invoking the various API method
 ```js
 import FinX from "finx_api/finx.js";
 
-// YAML configuration
-let finx = FinX({yaml_path: 'path/to/finx_config.yml'});
-
-// .env file
-finx = FinX({env_path: 'path/to/.env'});
-
-// No file (will check environment variables);
-finx = FinX();
+// Checks environment variables;
+let finx = FinX();
 ```
 
 #### Get API Methods

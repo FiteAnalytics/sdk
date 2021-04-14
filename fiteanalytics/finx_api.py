@@ -3,40 +3,23 @@
 finx_api.py
 """
 import os
+import time
 import json
 import asyncio
+from lru import LRU
 from gc import collect
 import _thread as thread
 from requests import session
 from aiohttp import ClientSession
 from urllib.parse import urlparse
 from websocket import WebSocketApp
-from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 
 DEFAULT_API_URL = 'https://sandbox.finx.io/api/'
 
 
-class LRUCache(OrderedDict):
-    """
-    Least Recently Used (LRU) cache
-    """
-    def __init__(self, maxsize=128, *args, **kwds):
-        self.maxsize = maxsize
-        super().__init__(*args, **kwds)
-
-    def __getitem__(self, key):
-        value = super().__getitem__(key)
-        self.move_to_end(key)
-        return value
-
-    def __setitem__(self, key, value):
-        if key in self:
-            self.move_to_end(key)
-        super().__setitem__(key, value)
-        if len(self) > self.maxsize:
-            oldest = next(iter(self))
-            del self[oldest]
+def _get_cache_key(params):
+    return ','.join([f'{key}:{params[key]}' for key in sorted(params.keys())])
 
 
 class __SyncFinX:
@@ -66,17 +49,13 @@ class __SyncFinX:
         self.max_cache_size = kwargs.get('max_cache_size')
         if self.max_cache_size is None:
             self.max_cache_size = 100
-        self.cache = LRUCache(self.max_cache_size)
+        self.cache = LRU(self.max_cache_size)
 
     def get_api_key(self):
         return self.__api_key
 
     def get_api_url(self):
         return self.__api_url
-
-    @staticmethod
-    def __get_cache_key(params):
-        return '_'.join([f'{key}:{params[key]}' for key in sorted(params.keys()) if key != 'finx_api_key'])
 
     def clear_cache(self):
         self.cache.clear()
@@ -89,8 +68,8 @@ class __SyncFinX:
                 key: value for key, value in kwargs.items()
                 if key != 'finx_api_key' and key != 'api_method' and value is not None
             })
-        cache_key = self.__get_cache_key(request_body)
-        cached_response = self.cache.get(cache_key)
+        cache_key = _get_cache_key(request_body)
+        cached_response = self.cache.get(cache_key, None)
         if cached_response is not None:
             print('Found in cache')
             return cached_response
@@ -102,7 +81,7 @@ class __SyncFinX:
         self.cache[cache_key] = data
         return data
 
-    def get_api_methods(self):
+    def get_api_methods(self, **kwargs):
         """
         List API methods with parameter specifications
         """
@@ -111,7 +90,7 @@ class __SyncFinX:
             'api_method': 'list_api_functions'
         })
 
-    def get_security_reference_data(self, security_id, as_of_date=None):
+    def get_security_reference_data(self, security_id, **kwargs):
         """
         Security reference function
 
@@ -123,6 +102,7 @@ class __SyncFinX:
             'api_method': 'security_reference',
             'security_id': security_id,
         }
+        as_of_date = kwargs.get('as_of_date')
         if as_of_date is not None:
             request_body['as_of_date'] = as_of_date
         return self.__dispatch(request_body)
@@ -201,8 +181,8 @@ class __AsyncFinx(__SyncFinX):
                 key: value for key, value in kwargs.items()
                 if key != 'finx_api_key' and key != 'api_method' and value is not None
             })
-        cache_key = self.__get_cache_key(request_body)
-        cached_response = self.cache.get(cache_key)
+        cache_key = _get_cache_key(request_body)
+        cached_response = self.cache.get(cache_key, None)
         if cached_response is not None:
             print('Found in cache')
             return cached_response
@@ -215,7 +195,7 @@ class __AsyncFinx(__SyncFinX):
             self.cache[cache_key] = data
             return data
 
-    async def get_api_methods(self):
+    async def get_api_methods(self, **kwargs):
         """
         List API methods with parameter specifications
         """
@@ -224,7 +204,7 @@ class __AsyncFinx(__SyncFinX):
             'api_method': 'list_api_functions'
         })
 
-    async def get_security_reference_data(self, security_id, as_of_date=None):
+    async def get_security_reference_data(self, security_id, **kwargs):
         """
         Security reference function
 
@@ -236,6 +216,7 @@ class __AsyncFinx(__SyncFinX):
             'api_method': 'security_reference',
             'security_id': security_id,
         }
+        as_of_date = kwargs.get('as_of_date')
         if as_of_date is not None:
             request_body['as_of_date'] = as_of_date
         return await self.__dispatch(request_body)
@@ -318,13 +299,13 @@ class __FinXSocket(WebSocketApp):
         self.max_cache_size = kwargs.get('max_cache_size')
         if self.max_cache_size is None:
             self.max_cache_size = 100
-        self.cache = LRUCache(self.max_cache_size)
+        self.cache = LRU(self.max_cache_size)
         self.executor = ThreadPoolExecutor()
+        self.is_authenticated = False
 
         def on_open(socket):
             try:
-                params = {'finx_api_key': socket.get_api_key()}
-                print(f'Sending {params}...')
+                print(f'Socket connected. Authenticating...')
                 socket.send(json.dumps({'finx_api_key': socket.get_api_key()}))
             except Exception as _e:
                 print(f'Socket on_open error: {_e}')
@@ -333,15 +314,16 @@ class __FinXSocket(WebSocketApp):
         def on_message(socket, message):
             try:
                 message = json.loads(message)
-                print(message)
+                # print(message)
                 if message.get('is_authenticated'):
-                    print(f'Successfully authenticated')
+                    print('Successfully authenticated')
+                    self.is_authenticated = True
                     return None
                 error = message.get('error')
                 if error is not None:
                     print(f'API returned error: {error}')
                     return None
-                self.cache[self.__get_cache_key(message['input_params'])] = message['data']
+                self.cache[message['cache_key']] = message['data']
             except Exception as _e:
                 print(f'Socket on_message error: {_e}')
             return None
@@ -359,6 +341,7 @@ class __FinXSocket(WebSocketApp):
             url = f'wss://{endpoint}'
             print(f'Connecting to {url}')
             super().__init__(url=url, on_open=on_open, on_message=on_message, on_close=on_close)
+        # self.executor.submit(self.run_forever, ping_interval=60)
         thread.start_new_thread(self.run_forever, (), {'ping_interval': 60})
 
     def get_api_key(self):
@@ -366,10 +349,6 @@ class __FinXSocket(WebSocketApp):
 
     def get_api_url(self):
         return self.__api_url
-
-    @staticmethod
-    def __get_cache_key(params):
-        return '_'.join([f'{key}:{params[key]}' for key in sorted(params.keys())])
 
     def clear_cache(self):
         self.cache.clear()
@@ -379,23 +358,31 @@ class __FinXSocket(WebSocketApp):
     def await_result(self, cache_key, callback, **kwargs):
         result = None
         while result is None:
-            result = self.cache.get(cache_key)
+            result = self.cache.get(cache_key, None)
         callback(result, **kwargs)
 
     def __dispatch(self, payload, **kwargs):
+        if not self.is_authenticated:
+            i = 5000
+            while not self.is_authenticated and i >= 1:
+                time.sleep(.001)
+                i -= 1
+            if not self.is_authenticated:
+                raise Exception('Client not authenticated')
         callback = kwargs.pop('callback', None)
         if any(kwargs):
             payload.update({
                 key: value for key, value in kwargs.items()
                 if key != 'finx_api_key' and key != 'api_method' and value is not None
             })
-        cache_key = self.__get_cache_key(payload)
-        cached_response = self.cache.get(cache_key)
+        cache_key = _get_cache_key(payload)
+        cached_response = self.cache.get(cache_key, None)
         if cached_response is not None:
             print('Found in cache')
             if callable(callback):
                 callback(cached_response, **kwargs)
             return cached_response
+        payload['cache_key'] = cache_key
         self.send(json.dumps(payload))
         if callable(callback):
             self.executor.submit(self.await_result, cache_key, callback, **kwargs)
@@ -407,17 +394,18 @@ class __FinXSocket(WebSocketApp):
         """
         return self.__dispatch({'api_method': 'list_api_functions'}, **kwargs)
 
-    def get_security_reference_data(self, security_id, as_of_date=None, **kwargs):
+    def get_security_reference_data(self, security_id, **kwargs):
         """
         Security reference function
 
         :param security_id: string
-        :param as_of_date: string as YYYY-MM-DD (optional)
+        :keyword as_of_date: string as YYYY-MM-DD (optional)
         """
         payload = {
             'api_method': 'security_reference',
             'security_id': security_id,
         }
+        as_of_date = kwargs.get('as_of_date')
         if as_of_date is not None:
             payload['as_of_date'] = as_of_date
         return self.__dispatch(payload, **kwargs)
@@ -467,14 +455,117 @@ class __FinXSocket(WebSocketApp):
         return [function(security_id, **kwargs) for security_id, kwargs in security_args.items()]
 
 
-def FinX(**kwargs):
+def FinX(kind='sync', **kwargs):
     """
     Unified interface to spawn FinX client. Use keyword "kind" to specify the type of client
     :keyword kind: (string) - 'socket' for websocket client, 'async' for async client, default sync client
     """
-    kind = kwargs.pop('kind', None)
     if kind == 'socket':
         return __FinXSocket(**kwargs)
     if kind == 'async':
         return __AsyncFinx(**kwargs)
     return __SyncFinX(**kwargs)
+
+
+"""
+from timeit import timeit
+
+def sync_client_test():
+    from finx_api import FinX
+    finx = FinX('sync')
+    print('\n' + '*'*20 + 'GET API METHODS' + '*'*20 + '\n')
+    finx.get_api_methods()
+    print('\n' + '*'*20 + 'GET SECURITY ANALYTICS' + '*'*20 + '\n')
+    finx.get_security_analytics('9127962F5', as_of_date='2021-03-24')
+    print('\n' + '*'*20 + 'GET SECURITY CASH FLOWS' + '*'*20 + '\n')
+    finx.get_security_cash_flows('9127962F5', as_of_date='2021-03-24')
+    finx.clear_cache()
+    print('\n' + '*'*20 + 'BATCH SECURITY ANALYTICS' + '*'*20 + '\n')
+    finx.batch(
+        finx.get_security_analytics, 
+        {
+            '9127962F5': {'as_of_date': '2021-03-24', 'foo': 'bar'},
+            'USQ98418AH10': {'as_of_date': '2020-09-14'},
+            '912796B24': {'as_of_date': '2021-04-01'},
+            '912796F61': {'as_of_date': '2021-04-01'}
+        }
+    )
+    finx.session.close()
+"""
+"""
+timeit(lambda: sync_client_test(), number=1)
+"""
+"""
+from asgiref.sync import AsyncToSync
+
+@AsyncToSync
+async def async_client_test():
+    from finx_api import FinX
+    finx = FinX('async')
+    print('\n' + '*'*20 + 'GET API METHODS' + '*'*20 + '\n')
+    await finx.get_api_methods(
+        callback=lambda x, **kwargs: print(f'\n====> GOT API METHODS: {x}\n'))
+    print('\n' + '*'*20 + 'GET SECURITY ANALYTICS' + '*'*20 + '\n')
+    await finx.get_security_analytics(
+        '9127962F5', 
+        as_of_date='2021-03-24', 
+        callback=lambda x, **kwargs: print(f'\n====> GOT SECURITY ANALYTICS: {x}\n'))
+    print('\n' + '*'*20 + 'GET SECURITY CASH FLOWS' + '*'*20 + '\n')
+    await finx.get_security_cash_flows(
+        '9127962F5', 
+        as_of_date='2021-03-24', 
+        callback=lambda x, **kwargs: print(f'\n====> GOT SECURITY CASH FLOWS: {x}\n'))
+    finx.clear_cache()
+    print('\n' + '*'*20 + 'BATCH SECURITY ANALYTICS' + '*'*20 + '\n')
+    await finx.batch(
+        finx.get_security_analytics, 
+        {
+            '9127962F5': {'as_of_date': '2021-03-24', 'foo': 'bar'},
+            'USQ98418AH10': {'as_of_date': '2020-09-14'},
+            '912796B24': {'as_of_date': '2021-04-01'},
+            '912796F61': {'as_of_date': '2021-04-01'}
+        }
+    )
+    await finx.session.close()
+"""
+"""
+timeit(lambda: async_client_test(), number=1)
+"""
+"""
+from timeit import timeit
+import time
+
+def socket_client_test():
+    from finx_api import FinX
+    finx = FinX('socket')
+    keys = []
+    print('\n' + '*'*20 + 'GET API METHODS' + '*'*20 + '\n')
+    keys.append(finx.get_api_methods())
+    print('\n' + '*'*20 + 'GET SECURITY ANALYTICS' + '*'*20 + '\n')
+    keys.append(finx.get_security_analytics('9127962F5', as_of_date='2021-03-24'))
+    print('\n' + '*'*20 + 'GET SECURITY CASH FLOWS' + '*'*20 + '\n')
+    keys.append(finx.get_security_cash_flows('9127962F5', as_of_date='2021-03-24'))
+    print('\n' + '*'*20 + 'BATCH SECURITY ANALYTICS' + '*'*20 + '\n')
+    keys += finx.batch(
+        finx.get_security_analytics, 
+        {
+            '9127962F5': {'as_of_date': '2021-03-24', 'foo': 'bar'},
+            'USQ98418AH10': {'as_of_date': '2020-09-14'},
+            '912796B24': {'as_of_date': '2021-04-01'},
+            '912796F61': {'as_of_date': '2021-04-01'}
+        }
+    )
+    i = 15000
+    results = {key: finx.cache.get(key) for key in keys}
+    remaining_tasks = {key: value for key, value in results.items() if value is None}
+    while any(remaining_tasks) and i >= 1:
+        time.sleep(0.001)
+        i -=1
+        results = {key: finx.cache.get(key) for key in remaining_tasks}
+        remaining_tasks = {key: value for key, value in results.items() if value is None}
+    if any(remaining_tasks):
+        print(f'Didn\'t get results in time for {len(remaining_tasks.keys())} out of {len(keys)} tasks')
+"""
+"""
+timeit(lambda: socket_client_test(), number=1)
+"""

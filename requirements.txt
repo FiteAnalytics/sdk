@@ -1,3 +1,4 @@
-webscoket-client
+lru
+websocket-client
 PyYAML
 aiohttp
