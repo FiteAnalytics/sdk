@@ -42,7 +42,6 @@ const _FinX = (kwargs={}) => {
     /*
     Add non-null keyword args to request body, prevent overriding of api_method and finx_api_key, and send request
      */
-    
     dispatch = async(request_body, kwargs={}) => {
         if (Object.keys(kwargs).length !== 0) {
             for (const key in kwargs) {
@@ -250,7 +249,7 @@ const _FinXSocket = (kwargs={}) => {
         const cache_key = _get_cache_key(payload);
         const cached_response = finx.cache.get(cache_key);
         if (cached_response != null) {
-            console.log('Found in cache');
+            console.log('Found in cache:', cached_response);
             if (typeof callback === 'function') {
                 if (callback.constructor.name === 'AsyncFunction')
                     await callback(cached_response, kwargs);
