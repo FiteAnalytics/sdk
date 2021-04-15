@@ -24,7 +24,7 @@ def _get_cache_key(params):
     return ','.join([f'{key}:{params[key]}' for key in sorted(params.keys())])
 
 
-class _FinX:
+class _FinXClient:
 
     def __init__(self, **kwargs):
         """
@@ -144,15 +144,15 @@ class _FinX:
         :param security_args: Dict mapping security_id (string) to a dict of key word arguments
         """
         assert self._executor is not None \
-                and function != self.get_api_methods \
-                and type(security_args) is dict \
-                and len(security_args) < 100
+            and function != self.get_api_methods \
+            and type(security_args) is dict \
+            and len(security_args) < 100
         tasks = [self._executor.submit(function, security_id=security_id, **kwargs)
                  for security_id, kwargs in security_args.items()]
         return [task.result() for task in tasks]
 
 
-class _AsyncFinx(_FinX):
+class _AsyncFinXClient(_FinXClient):
 
     def __init__(self, **kwargs):
         """
@@ -263,7 +263,7 @@ class _AsyncFinx(_FinX):
         return await asyncio.gather(*tasks)
 
 
-class _FinXSocket(_FinX):
+class _FinXSocketClient(_FinXClient):
 
     def __init__(self, **kwargs):
         """
@@ -361,19 +361,19 @@ class _FinXSocket(_FinX):
         :keyword callback: function to invoke on each corresponding result when received
         """
         assert function != self.get_api_methods \
-                and type(security_args) is dict \
-                and len(security_args) < 100
+            and type(security_args) is dict \
+            and len(security_args) < 100
         return [function(security_id, **_security_args, **kwargs)
                 for security_id, _security_args in security_args.items()]
 
 
-def FinX(kind='sync', **kwargs):
+def FinXClient(kind='sync', **kwargs):
     """
     Unified interface to spawn FinX client. Use keyword "kind" to specify the type of client
     :keyword kind: (string) - 'socket' for websocket client, 'async' for async client, default sync client
     """
     if kind == 'socket':
-        return _FinXSocket(**kwargs)
+        return _FinXSocketClient(**kwargs)
     if kind == 'async':
-        return _AsyncFinx(**kwargs)
-    return _FinX(**kwargs)
+        return _AsyncFinXClient(**kwargs)
+    return _FinXClient(**kwargs)

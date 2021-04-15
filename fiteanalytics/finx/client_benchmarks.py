@@ -1,12 +1,12 @@
 import time
 import asyncio
 from timeit import timeit
-from .finx_api import FinX
 from asgiref.sync import AsyncToSync
+from fiteanalytics.finx.client import FinXClient
 
 
 def sync_client_test():
-    finx = FinX()
+    finx = FinXClient()
     print('\n' + '*'*20 + 'GET API METHODS' + '*'*20 + '\n')
     finx.get_api_methods()
     print('\n' + '*'*20 + 'GET SECURITY ANALYTICS' + '*'*20 + '\n')
@@ -29,7 +29,7 @@ def sync_client_test():
 
 @AsyncToSync
 async def async_client_test():
-    finx = FinX(kind='async')
+    finx = FinXClient('async')
     tasks = []
     print('\n' + '*'*20 + 'GET API METHODS' + '*'*20 + '\n')
     tasks.append(finx.get_api_methods(
@@ -59,7 +59,7 @@ async def async_client_test():
 
 
 def socket_client_test():
-    finx = FinX(kind='socket')
+    finx = FinXClient('socket')
     keys = []
     print('\n' + '*'*20 + 'GET API METHODS' + '*'*20 + '\n')
     keys.append(finx.get_api_methods())
@@ -79,22 +79,22 @@ def socket_client_test():
     )
     i = 15000
     remaining_tasks = {key: finx.cache.get(key) for key in keys}
-    keys = []
-    for key, value in remaining_tasks.items():
-        if value is not None:
-            print(f'Got {key}')
-        else:
-            keys.append(key)
-    while any(remaining_tasks) and i >= 1:
-        time.sleep(0.001)
-        i -=1
-        remaining_tasks = {key: finx.cache.get(key) for key in keys}
-        keys = []
+
+    def get_keys(_remaining_tasks):
+        _keys = []
         for key, value in remaining_tasks.items():
             if value is not None:
                 print(f'Got {key}')
             else:
-                keys.append(key)
+                _keys.append(key)
+        return _keys
+
+    keys = get_keys(remaining_tasks)
+    while any(remaining_tasks) and i >= 1:
+        time.sleep(0.001)
+        i -= 1
+        remaining_tasks = {key: finx.cache.get(key) for key in keys}
+        keys = get_keys(remaining_tasks)
     if any(remaining_tasks):
         print(f'Didn\'t get results in time for {len(remaining_tasks.keys())} tasks')
 

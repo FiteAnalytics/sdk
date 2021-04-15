@@ -59,14 +59,14 @@ Here is some sample code to get you started.
 #### Python
 ```python
 import json
-from fiteanalytics.finx_api import FinX
+from fiteanalytics.finx.client import FinXClient
 
 # Initialize synchronous HTTP client 
-# 1. Credentials fetched environment variables
-finx = FinX()
+# 1. Credentials fetched from environment variables
+finx = FinXClient()
 
 # 2. Credentials passed directly (and carefully!)
-finx = FinX(finx_api_key=my_api_key, finx_api_endpoint=my_api_endpoint)
+finx = FinXClient(finx_api_key=my_api_key, finx_api_endpoint=my_api_endpoint)
 
 # Get API methods
 print('\n*********** API Methods ***********')
@@ -111,14 +111,14 @@ finx.batch(
 ```
 #### Node.js
 ```javascript
-import FinX from "fiteanalytics";
+import FinXClient from "fiteanalytics/finx/client";
 
 // Initialize async HTTP client 
 // 1. Credentials fetched environment variables
-let finx = FinX();
+let finx = FinXClient();
 
 // 2. Credentials passed directly (and carefully!)
-finx = FinX({finx_api_key: my_api_key, finx_api_endpoint: my_api_endpoint})
+finx = FinXClient({finx_api_key: my_api_key, finx_api_endpoint: my_api_endpoint})
 
 let result;
 
@@ -204,16 +204,16 @@ using callback functions. The cache serves as a store for retrieving the values 
 Each function makes blocking synchronous requests. 
 ##### Initialization
 ```python
-finx = FinX()
+finx = FinXClient()
 # or 
-finx = FinX('sync')
+finx = FinXClient('sync')
 ```
 
 #### Asynchronous HTTP Client
 Each function makes asynchronous requests. Capable of dispatching multiple requests concurrently using asyncio.
 ##### Initialization
 ```python
-finx = FinX('async')
+finx = FinXClient('async')
 ``` 
 All functions are asynchronous and must therefore be awaited.
 
@@ -222,7 +222,7 @@ Runs a WebSocket connection in a separate thread and uses the connection to send
 Capable of dispatching multiple requests concurrently.
 ##### Initialization
 ```python
-finx = FinX('socket')
+finx = FinXClient('socket')
 ```
 By their nature, WebSockets are asynchronous. Function calls using this client will generally not return 
 the API response unless the request has been cached. If the request has not been cached, the function will return the 
@@ -238,13 +238,13 @@ def my_callback(response, **kwargs):
     print(f'Keyword arguments: {kwargs}')
 
 
-finx = FinX('socket')
+finx = FinXClient('socket')
 finx.get_api_methods(callback=my_callback, my_callback_kwarg='foo')
 ```
 If you prefer not to use the callback functionality or would like to wait for the response before proceeding in your 
 program, you can always use the returned cache key to interact with the cache directly:
 ```python
-finx = FinX('socket')
+finx = FinXClient('socket')
 response = finx.get_api_methods()
 if type(response) is str:
     cache_key = response
@@ -592,12 +592,8 @@ Output: A list of corresponding results for each security ID specified
 reference_data = finx.batch(
     finx.get_security_reference_data, 
     {
-        'USQ98418AH10': {
-            'as_of_date': '2020-09-14'
-        }, 
-        '3133XXP50': {
-            'as_of_date': '2020-09-14'
-        }   
+        'USQ98418AH10': {'as_of_date': '2020-09-14'}, 
+        '3133XXP50': {'as_of_date': '2020-09-14'}   
     })
 print(json.dumps(reference_data, indent=4))
 ```
@@ -873,12 +869,8 @@ Output: A list of corresponding results for each security ID specified
 reference_data = finx.batch(
     finx.get_security_reference_data, 
     {
-        USQ98418AH10: {
-            as_of_date: '2020-09-14'
-        }, 
-        3133XXP50: {
-            as_of_date: '2020-09-14'
-        }   
+        'USQ98418AH10': {as_of_date: '2020-09-14'}, 
+        '3133XXP50': {as_of_date: '2020-09-14'}   
     }
 ).then(data => console.log(data));
 ```

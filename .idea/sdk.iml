@@ -10,11 +10,14 @@
       <sourceFolder url="file://$MODULE_DIR$/node/finx_api" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/fiteanalytics/examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/node/examples" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/fiteanalytics" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/fiteanalytics/finx" isTestSource="false" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
   <component name="TestRunnerService">
+    <option name="projectConfiguration" value="pytest" />
     <option name="PROJECT_TEST_RUNNER" value="pytest" />
   </component>
 </module>

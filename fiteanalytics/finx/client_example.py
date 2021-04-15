@@ -1,12 +1,8 @@
-#! Python
-"""
-finx_api_example.py
-"""
 import json
-from fiteanalytics.finx_api import FinX
+from fiteanalytics.finx import FinX
 
-# Initialize synchronous client with no arguments -
-# checks environment variables for credentials
+# Initialize synchronous HTTP client 
+# Credentials fetched from environment variables
 finx = FinX()
 
 # Get API methods
@@ -20,22 +16,32 @@ as_of_date = '2020-09-14'
 # Get security reference data
 print('\n*********** Security Reference Data ***********')
 reference_data = finx.get_security_reference_data(
-    security_id,
+    security_id, 
     as_of_date=as_of_date)
 print(json.dumps(reference_data, indent=4))
 
 # Get security analytics
 print('\n*********** Security Analytics ***********')
 analytics = finx.get_security_analytics(
-    security_id,
-    as_of_date=as_of_date,
+    security_id, 
+    as_of_date=as_of_date, 
     price=100)
 print(json.dumps(analytics, indent=4))
 
 # Get projected cash flows
 print('\n*********** Security Cash Flows ***********')
 cash_flows = finx.get_security_cash_flows(
-    security_id,
-    as_of_date=as_of_date,
+    security_id, 
+    as_of_date=as_of_date, 
     price=100)
 print(json.dumps(cash_flows, indent=4))
+
+# Batch get security reference data
+print('\n*********** Batch Get Security Reference Data ***********')
+finx.batch(
+    finx.get_security_reference_data,
+    {
+        'USQ98418AH10': {'as_of_date': '2020-09-14'},
+        '3133XXP50': {'as_of_date': '2020-09-14'}
+    }
+)
