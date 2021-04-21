@@ -96,7 +96,7 @@ class _SyncFinXClient:
         """
         Security coverage check
 
-        :param security_id: (string) ID of security of interest
+        :param security_id: string - ID of security of interest
         """
         return self._dispatch('coverage_check', security_id=security_id, **kwargs)
 
@@ -105,7 +105,7 @@ class _SyncFinXClient:
         Security reference function
 
         :param security_id: string
-        :keyword as_of_date: string as YYYY-MM-DD (optional)
+        :keyword as_of_date: string as YYYY-MM-DD. Default None, optional
         """
         return self._dispatch('security_reference', security_id=security_id, **kwargs)
 
@@ -114,15 +114,15 @@ class _SyncFinXClient:
         Security analytics function
 
         :param security_id: string
-        :keyword as_of_date: string as YYYY-MM-DD (optional)
-        :keyword price: float (optional)
-        :keyword volatility: float (optional)
-        :keyword yield_shift: int (basis points, optional)
-        :keyword shock_in_bp: int (basis points, optional)
-        :keyword horizon_months: uint (optional)
-        :keyword income_tax: float (optional)
-        :keyword cap_gain_short_tax: float (optional)
-        :keyword cap_gain_long_tax: float (optional)
+        :keyword as_of_date: string as YYYY-MM-DD. Default None, optional
+        :keyword price: float Default None, optional
+        :keyword volatility: float. Default None, optional
+        :keyword yield_shift: int. Default None, optional
+        :keyword shock_in_bp: int. Default None, optional
+        :keyword horizon_months: uint. Default None, optional
+        :keyword income_tax: float. Default None, optional
+        :keyword cap_gain_short_tax: float. Default None, optional
+        :keyword cap_gain_long_tax: float. Default None, optional
         """
         return self._dispatch('security_analytics', security_id=security_id, **kwargs)
 
@@ -131,9 +131,9 @@ class _SyncFinXClient:
         Security cash flows function
 
         :param security_id: string
-        :keyword as_of_date: string as YYYY-MM-DD (optional)
-        :keyword price: float (optional)
-        :keyword shock_in_bp: int (optional)
+        :keyword as_of_date: string as YYYY-MM-DD. Default None, optional
+        :keyword price: float. Default 100.0, optional
+        :keyword shock_in_bp: int. Default None, optional
         """
         return self._dispatch('security_cash_flows', security_id=security_id, **kwargs)
 
@@ -234,7 +234,7 @@ class _AsyncFinXClient(_SyncFinXClient):
         """
         Security coverage check
 
-        :param security_id: (string) ID of security of interest
+        :param security_id: string - ID of security of interest
         """
         return await self._dispatch('coverage_check', security_id=security_id, **kwargs)
 
@@ -243,7 +243,7 @@ class _AsyncFinXClient(_SyncFinXClient):
         Security reference function
 
         :param security_id: string
-        :keyword as_of_date: string as YYYY-MM-DD (optional)
+        :keyword as_of_date: string as YYYY-MM-DD. Default None, optional
         """
         return await self._dispatch('security_reference', security_id=security_id, **kwargs)
 
@@ -252,15 +252,15 @@ class _AsyncFinXClient(_SyncFinXClient):
         Security analytics function
 
         :param security_id: string
-        :keyword as_of_date: string as YYYY-MM-DD (optional)
-        :keyword price: float (optional)
-        :keyword volatility: float (optional)
-        :keyword yield_shift: int (basis points, optional)
-        :keyword shock_in_bp: int (basis points, optional)
-        :keyword horizon_months: uint (optional)
-        :keyword income_tax: float (optional)
-        :keyword cap_gain_short_tax: float (optional)
-        :keyword cap_gain_long_tax: float (optional)
+        :keyword as_of_date: string as YYYY-MM-DD. Default None, optional
+        :keyword price: float. Default None, optional
+        :keyword volatility: float. Default None, optional
+        :keyword yield_shift: int. Default None, optional
+        :keyword shock_in_bp: int. Default None, optional
+        :keyword horizon_months: uint. Default None, optional
+        :keyword income_tax: float. Default None, optional
+        :keyword cap_gain_short_tax: float. Default None, optional
+        :keyword cap_gain_long_tax: float. Default None, optional
         """
         return await self._dispatch('security_analytics', security_id=security_id, **kwargs)
 
@@ -269,9 +269,9 @@ class _AsyncFinXClient(_SyncFinXClient):
         Security cash flows function
 
         :param security_id: string
-        :keyword as_of_date: string as YYYY-MM-DD (optional)
-        :keyword price: float (optional)
-        :keyword shock_in_bp: int (optional)
+        :keyword as_of_date: string as YYYY-MM-DD. Default None, optional
+        :keyword price: float. Default None, optional
+        :keyword shock_in_bp: int. Default None, optional
         """
         return await self._dispatch('security_cash_flows', security_id=security_id, **kwargs)
 
@@ -418,7 +418,7 @@ class _SocketFinXClient(_SyncFinXClient):
 
     def _dispatch(self, api_method, **kwargs):
         """
-        Abstract unitary request dispatch function
+        Abstract method dispatch function
         """
         if not self._socket.is_connected():
             self._init_socket()
@@ -524,54 +524,55 @@ class _SocketFinXClient(_SyncFinXClient):
 
     def _dispatch_batch(self, batch_method, security_params=None, input_file=None, output_file=None, **kwargs):
         """
-        Abstract batch request dispatch function. Issues a single request containing all inputs
+        Abstract batch request dispatch function. Issues a single request containing all inputs. Must either give the
+        inputs directly in security_params or specify absolute path to input_file. Specify the parameters & keywords and
+        invoke using the defined batch functions below
+
+        :param security_params: list - List of dicts containing the security_id and keyword arguments for each security
+                function invocation. Default None, optional
+        :param input_file: string - path to csv/txt file containing parameters for each security, row-wise.
+                Default None, optional
+        :param output_file: string - path to csv/txt file to output results to, default None, optional
+        :keyword callback: callable - function to execute on result once received. Function signature should be:
+
+                        def callback(result, **kwargs):
+
+                  If keyword value specified is True or not null, uses the generic callback function _batch_callback()
+                  defined above. Default None, optional
+        :keyword block: bool - block main thread until result arrives and return the value. Default False, optional
         """
         assert batch_method != 'list_api_functions' and (security_params is not None or input_file is not None)
+        callback = kwargs.get('callback')
+        if callback and not callable(callback):
+            kwargs['callback'] = self._batch_callback
         return self._dispatch(
             batch_method,
             security_params=self._get_batch_input(security_params, input_file),
             **kwargs,
             input_file=input_file,
-            output_file=output_file,
-            callback=kwargs.get('callback', self._batch_callback))
+            output_file=output_file)
 
     def batch_coverage_check(self, security_params=None, input_file=None, output_file=None, **kwargs):
         """
         Check coverage for batch of securities
-        :param security_params: (list) List of dicts containing the security_id and keyword arguments for each security
-                function invocation, optional
-        :param input_file: (string) path to csv/txt file containing parameters for each security, row-wise (optional)
-        :param output_file: (string) path to csv/txt file to output results to, optional
         """
         return self._dispatch_batch('batch_coverage_check', security_params, input_file, output_file, **kwargs)
 
     def batch_security_reference(self, security_params=None, input_file=None, output_file=None, **kwargs):
         """
         Get security reference data for batch of securities
-        :param security_params: (list) List of dicts containing the security_id and keyword arguments for each security
-                function invocation, optional
-        :param input_file: (string) path to csv/txt file containing parameters for each security, row-wise (optional)
-        :param output_file: (string) path to csv/txt file to output results to, optional
         """
         return self._dispatch_batch('batch_security_reference', security_params, input_file, output_file, **kwargs)
 
     def batch_security_analytics(self, security_params=None, input_file=None, output_file=None, **kwargs):
         """
         Get security analytics for batch of securities
-        :param security_params: (list) List of dicts containing the security_id and keyword arguments for each security
-                function invocation, optional
-        :param input_file: (string) path to csv/txt file containing parameters for each security, row-wise (optional)
-        :param output_file: (string) path to csv/txt file to output results to, optional
         """
         return self._dispatch_batch('batch_security_analytics', security_params, input_file, output_file, **kwargs)
 
     def batch_security_cash_flows(self, security_params=None, input_file=None, output_file=None, **kwargs):
         """
         Get security cash flows for batch of securities
-        :param security_params: (list) List of dicts containing the security_id and keyword arguments for each security
-                function invocation, optional
-        :param input_file: (string) path to csv/txt file containing parameters for each security, row-wise (optional)
-        :param output_file: (string) path to csv/txt file to output results to, optional
         """
         return self._dispatch_batch('batch_security_cash_flows', security_params, input_file, output_file, **kwargs)
 
@@ -579,7 +580,7 @@ class _SocketFinXClient(_SyncFinXClient):
 def FinXClient(kind='sync', **kwargs):
     """
     Unified interface to spawn FinX client. Use keyword "kind" to specify the type of client
-    :param kind: (string) - 'socket' for websocket client, 'async' for async client, default sync client, optional
+    :param kind: string - 'socket' for websocket client, 'async' for async client. Default 'sync', optional
     """
     if kind == 'socket':
         return _SocketFinXClient(**kwargs)

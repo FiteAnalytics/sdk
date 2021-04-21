@@ -3,7 +3,7 @@ client_example.py
 """
 
 import json
-from fiteanalytics.finx.client import FinXClient
+from client import FinXClient
 
 # Initialize socket client
 # Credentials fetched from environment variables
@@ -11,7 +11,7 @@ finx = FinXClient('socket')
 
 # Get API methods
 print('\n*********** API Methods ***********')
-api_methods = finx.get_api_methods(block=True)
+api_methods = finx.list_api_functions(block=True)
 print(json.dumps(api_methods, indent=4))
 
 security_id = 'USQ98418AH10'
@@ -45,16 +45,10 @@ print(json.dumps(cash_flows, indent=4))
 
 # Batch get security reference data
 print('\n*********** Batch Get Security Reference Data ***********')
-batch_reference_data = finx.batch_security_reference(
+batch_reference_data = finx.batch_coverage_check(
     [
-        {
-            'security_id': 'USQ98418AH10',
-            'as_of_date': '2020-09-14'
-        },
-        {
-            'security_id': '3133XXP50',
-            'as_of_date': '2020-09-14'
-        }
+        {'security_id': 'USQ98418AH10'},
+        {'security_id': '3133XXP50'}
     ],
     block=True
 )

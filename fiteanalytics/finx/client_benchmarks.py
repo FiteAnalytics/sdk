@@ -68,7 +68,7 @@ def socket_client_test():
     print('\n' + '*'*20 + 'GET SECURITY CASH FLOWS' + '*'*20 + '\n')
     keys.append(finx.get_security_cash_flows('9127962F5', as_of_date='2021-03-24'))
     print('\n' + '*'*20 + 'BATCH SECURITY ANALYTICS' + '*'*20 + '\n')
-    keys.append(finx.batch_security_analytics(BATCH_INPUTS))
+    keys.append(finx.batch_security_analytics(BATCH_INPUTS, callback=True))
     remaining_tasks = {key: finx.cache.get(key) for key in keys}
     keys = [key for key, value in remaining_tasks.items() if value is None]
     while any(remaining_tasks):

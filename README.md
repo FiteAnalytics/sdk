@@ -37,8 +37,8 @@ The second method is by manually passing kwargs into the client constructor. We 
 credentials in your code.
 ### Keyword Arguments - handle with care!
 ```python
-:keyword finx_api_key: (string)
-:keyword finx_api_endpoint: (string)
+:keyword finx_api_key: string
+:keyword finx_api_endpoint: string
 ```
 
 ### SDK Installation
@@ -101,14 +101,15 @@ print(json.dumps(cash_flows, indent=4))
 
 # Batch get security reference data
 print('\n*********** Batch Get Security Reference Data ***********')
-batch_results = finx.batch(
-    finx.get_security_reference_data,
-    {
-        'USQ98418AH10': {'as_of_date': '2020-09-14'},
-        '3133XXP50': {'as_of_date': '2020-09-14'}
-    }
+batch_reference_data = finx.batch_coverage_check(
+    [
+        {'security_id': 'USQ98418AH10'},
+        {'security_id': '3133XXP50'}
+    ],
+    block=True
 )
-print(json.dumps(batch_results, indent=4))
+print(json.dumps(batch_reference_data, indent=4))
+
 ```
 #### Node.js
 ```javascript
@@ -225,7 +226,7 @@ Capable of dispatching multiple requests concurrently.
 ```python
 finx = FinXClient('socket')
 ```
-By their nature, WebSockets are asynchronous. Function calls using this client will generally not return 
+By their nature, WebSockets are asynchronous. Function calls using this client will not return 
 the API response unless the request has been cached. If the request has not been cached, the function will return the 
 cache key that will be used to store the response in the cache when it is received.
 
@@ -243,24 +244,21 @@ finx = FinXClient('socket')
 finx.get_api_methods(callback=my_callback, my_callback_kwarg='foo')
 ```
 If you prefer not to use the callback functionality or would like to wait for the response before proceeding in your 
-program, you can always use the returned cache key to interact with the cache directly:
+program, you can use the ```block=True``` keyword. This will block the main thread until the result arrives.
 ```python
-finx = FinXClient('socket')
-response = finx.get_api_methods()
-if type(response) is str:
-    cache_key = response
-    response = None
-    while response is None: 
-        response = finx.cache.get(cache_key)
-
-print(response)
+response = finx.get_api_methods(block=True)
 ``` 
-
-#### Get API Methods
+You can even combine the ```block``` and ```callback``` functionality. The combination will block the main thread until 
+the result is received, execute the callback on the result, and return the result.
+```python
+response = finx.get_api_methods(block=True, callback=my_callback)
+```
+#### List API Functions
 
 ```
 Inputs: 
-:keyword callback: (function) websocket client only, optional
+:keyword callback: callable - websocket client only. Default None, optional
+:keyword block: bool - websocket client only: block main thread until result arrives and return the value. Default False, optional
 
 Output: A object mapping each available API method to their respective required and optional parameters
 ```
@@ -323,15 +321,36 @@ print(json.dumps(api_methods, indent=4))
 
 ```
 
+#### Coverage Check
+```
+Inputs: 
+:param security_id: string - ID of security of interest
+:keyword callback: callable - websocket client only. Default None, optional
+:keyword block: bool - websocket client only: block main thread until result arrives and return the value. Default False, optional
 
-#### Get Security Reference Data
-
+Output: A object indicating if the security is covered
+```
+##### Example
+```python
+coverage = finx.coverage_check('USQ98418AH10')
+print(json.dumps(coverage, indent=4))                      
+```
+###### Output
+```json5
+{
+    "security_id": "USQ98418AH10",
+    "is_covered": true
+}
 
 ```
+
+#### Get Security Reference Data
+```
 Inputs:
-:param security_id: (string)
-:keyword as_of_date: (string as YYYY-MM-DD) optional
-:keyword callback: (function) websocket client only, optional
+:param security_id: string
+        :keyword as_of_date: string as YYYY-MM-DD. Default None, optional
+:keyword callback: callable - websocket client only. Default None, optional
+:keyword block: bool - websocket client only: block main thread until result arrives and return the value. Default False, optional
 
 Output: An object containing various descriptive fields for the specified security
 ```
@@ -373,17 +392,18 @@ print(json.dumps(reference_data, indent=4))
 
 ```
 Inputs:
-:param security_id: (string)
-:keyword as_of_date: (string as YYYY-MM-DD) optional
-:keyword price: (float) optional
-:keyword volatility: (float) optional
-:keyword yield_shift: (int basis points), optional
-:keyword shock_in_bp: (int basis points), optional
-:keyword horizon_months: (uint) optional
-:keyword income_tax: (float) optional
-:keyword cap_gain_short_tax: (float) optional
-:keyword cap_gain_long_tax: (float) optional
-:keyword callback: (function) websocket client only, optional
+:param security_id: string
+:keyword as_of_date: string as YYYY-MM-DD. Default None, optional
+:keyword price: float Default None, optional
+:keyword volatility: float. Default None, optional
+:keyword yield_shift: int. Default None, optional
+:keyword shock_in_bp: int. Default None, optional
+:keyword horizon_months: uint. Default None, optional
+:keyword income_tax: float. Default None, optional
+:keyword cap_gain_short_tax: float. Default None, optional
+:keyword cap_gain_long_tax: float. Default None, optional
+:keyword callback: callable - websocket client only. Default None, optional
+:keyword block: bool - websocket client only: block main thread until result arrives and return the value. Default False, optional
 
 Output: An object containing various fixed income risk analytics measures for the specified security and parameters
 ```
@@ -440,11 +460,12 @@ print(json.dumps(analytics, indent=4))
 
 ```
 Inputs:
-:param security_id: (string)
-:keyword as_of_date: (string as YYYY-MM-DD) optional
-:keyword price: (float) optional
-:keyword shock_in_bp: (int) optional
-:keyword callback: (function) websocket client only, optional
+:param security_id: string
+:keyword as_of_date: string as YYYY-MM-DD. Default None, optional
+:keyword price: float. Default 100.0, optional
+:keyword shock_in_bp: int. Default None, optional
+:keyword callback: callable - websocket client only. Default None, optional
+:keyword block: bool - websocket client only: block main thread until result arrives and return the value. Default False, optional
 
 Output: An object containing a vector time series of cash flow dates and corresponding amounts
 ```
@@ -577,73 +598,6 @@ print(json.dumps(cash_flows, indent=4))
 }
 ```
 
-#### Batch
-
-```
-Inputs:
-:param function: (function) Client member function to invoke for each security
-:param security_args: (dict) Object mapping security_id (string) to an object of key word arguments for the function 
-:keyword callback: (function) websocket client only, optional    
-
-Output: A list of corresponding results for each security ID specified
-```
-
-##### Example
-```python
-reference_data = finx.batch(
-    finx.get_security_reference_data, 
-    {
-        'USQ98418AH10': {'as_of_date': '2020-09-14'}, 
-        '3133XXP50': {'as_of_date': '2020-09-14'}   
-    })
-print(json.dumps(reference_data, indent=4))
-```
-###### Output
-```json5
-[
-    {
-        "security_id": "USQ98418AH10",
-        "as_of_date": "2021-03-09",
-        "security_name": null,
-        "asset_class": "bond",
-        "security_type": "corporate",
-        "government_type": null,
-        "corporate_type": null,
-        "municipal_type": null,
-        "structured_type": null,
-        "mbspool_type": null,
-        "currency": "USD",
-        "maturity_date": "2020-09-22T00:00:00Z",
-        "issue_date": "2010-09-22T00:00:00Z",
-        "issuer_name": "Woolworths Group Limited",
-        "current_coupon": 4.0,
-        "has_optionality": false,
-        "has_sinking_schedule": false,
-        "has_floating_rate": false
-    },
-    {
-        "security_id": "3133XXP50",
-        "as_of_date": "2021-03-09",
-        "security_name": null,
-        "asset_class": "bond",
-        "security_type": "government",
-        "government_type": null,
-        "corporate_type": null,
-        "municipal_type": null,
-        "structured_type": null,
-        "mbspool_type": null,
-        "currency": "USD",
-        "maturity_date": "2020-03-13T00:00:00Z",
-        "issue_date": "2010-03-16T00:00:00Z",
-        "issuer_name": "Federal Home Loan Banks",
-        "current_coupon": 4.125,
-        "has_optionality": false,
-        "has_sinking_schedule": false,
-        "has_floating_rate": false
-    }
-]
-```
-
 ### Javascript SDK
 
 The Javascript SDK is similarly implemented as a wrapper class with member functions for invoking the various API 
@@ -661,7 +615,8 @@ npm install
 
 ```
 Inputs:
-:keyword callback: (function) websocket client only, optional
+:keyword callback: callable - websocket client only. Default None, optional
+:keyword block: bool - websocket client only: block main thread until result arrives and return the value. Default False, optional
 
 Output: An object mapping each available API method to their respective required and optional parameters
 ```
@@ -705,7 +660,8 @@ finx.get_api_methods().then(data => console.log(data));
 Inputs
 :param security_id: (string)
 :param as_of_date: (string as YYYY-MM-DD) optional
-:keyword callback: (function) websocket client only, optional
+:keyword callback: callable - websocket client only. Default None, optional
+:keyword block: bool - websocket client only: block main thread until result arrives and return the value. Default False, optional
 
 Output: An object containing various descriptive fields for the specified security
 ```
@@ -755,7 +711,8 @@ Inputs:
 :keyword income_tax: (float) optional
 :keyword cap_gain_short_tax: (float) optional
 :keyword cap_gain_long_tax: (float) optional
-:keyword callback: (function) websocket client only, optional
+:keyword callback: callable - websocket client only. Default None, optional
+:keyword block: bool - websocket client only: block main thread until result arrives and return the value. Default False, optional
 
 Output: An object containing various fixed income risk analytics measures for the specified security and parameters
 
@@ -819,7 +776,8 @@ Inputs:
 :keyword as_of_date: (string as YYYY-MM-DD) optional
 :keyword price: (float) optional
 :keyword shock_in_bp: (int) optional
-:keyword callback: (function) websocket client only, optional
+:keyword callback: callable - websocket client only. Default None, optional
+:keyword block: bool - websocket client only: block main thread until result arrives and return the value. Default False, optional
 
 Output: An object containing a vector time series of cash flow dates and corresponding amounts
 ```
@@ -860,7 +818,8 @@ finx.get_security_cash_flows(
 Inputs:
 :param function: (function) Client member function to invoke for each security
 :param security_args: (dict) Object mapping security_id (string) to an object of key word arguments 
-:keyword callback: (function) websocket client only, optional
+:keyword callback: callable - websocket client only. Default None, optional
+:keyword block: bool - websocket client only: block main thread until result arrives and return the value. Default False, optional
 
 Output: A list of corresponding results for each security ID specified
 ```
