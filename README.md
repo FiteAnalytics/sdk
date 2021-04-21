@@ -101,13 +101,14 @@ print(json.dumps(cash_flows, indent=4))
 
 # Batch get security reference data
 print('\n*********** Batch Get Security Reference Data ***********')
-finx.batch(
+batch_results = finx.batch(
     finx.get_security_reference_data,
     {
         'USQ98418AH10': {'as_of_date': '2020-09-14'},
         '3133XXP50': {'as_of_date': '2020-09-14'}
     }
 )
+print(json.dumps(batch_results, indent=4))
 ```
 #### Node.js
 ```javascript
