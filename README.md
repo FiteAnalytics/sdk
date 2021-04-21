@@ -36,9 +36,11 @@ export FINX_API_ENDPOINT=my_api_endpoint
 The second method is by manually passing kwargs into the client constructor. We do NOT recommend hard-coding your 
 credentials in your code.
 ### Keyword Arguments - handle with care!
-```python
+```
 :keyword finx_api_key: string
 :keyword finx_api_endpoint: string
+:keyword block: bool - websocket client only. Set the default behavior for blocking the main thread on function calls. 
+                Can be overridden ad hoc in the function's keyword arguments. Default True, optional
 ```
 
 ### SDK Installation
@@ -105,8 +107,7 @@ batch_reference_data = finx.batch_coverage_check(
     [
         {'security_id': 'USQ98418AH10'},
         {'security_id': '3133XXP50'}
-    ],
-    block=True
+    ]
 )
 print(json.dumps(batch_reference_data, indent=4))
 
@@ -246,9 +247,11 @@ finx.get_api_methods(callback=my_callback, my_callback_kwarg='foo')
 If you prefer not to use the callback functionality or would like to wait for the response before proceeding in your 
 program, you can use the ```block=True``` keyword. This will block the main thread until the result arrives.
 ```python
-response = finx.get_api_methods(block=True)
+finx = FinXClient('socket', block=True)  # Sets blocking as the default behavior
+response = finx.get_api_methods()  # Blocks until result arrives
+finx.get_api_methods(block=False)  # Does not block 
 ``` 
-You can even combine the ```block``` and ```callback``` functionality. The combination will block the main thread until 
+You can even combine the ```block``` and ```callback``` functionality. This combination will block the main thread until 
 the result is received, execute the callback on the result, and return the result.
 ```python
 response = finx.get_api_methods(block=True, callback=my_callback)
@@ -258,7 +261,8 @@ response = finx.get_api_methods(block=True, callback=my_callback)
 ```
 Inputs: 
 :keyword callback: callable - websocket client only. Default None, optional
-:keyword block: bool - websocket client only: block main thread until result arrives and return the value. Default False, optional
+:keyword block: bool - websocket client only: block main thread until result arrives and return the value. 
+                Default is object's configured default, optional
 
 Output: A object mapping each available API method to their respective required and optional parameters
 ```
@@ -326,7 +330,8 @@ print(json.dumps(api_methods, indent=4))
 Inputs: 
 :param security_id: string - ID of security of interest
 :keyword callback: callable - websocket client only. Default None, optional
-:keyword block: bool - websocket client only: block main thread until result arrives and return the value. Default False, optional
+:keyword block: bool - websocket client only: block main thread until result arrives and return the value. 
+                Default is object's configured default, optional
 
 Output: A object indicating if the security is covered
 ```
@@ -350,7 +355,8 @@ Inputs:
 :param security_id: string
         :keyword as_of_date: string as YYYY-MM-DD. Default None, optional
 :keyword callback: callable - websocket client only. Default None, optional
-:keyword block: bool - websocket client only: block main thread until result arrives and return the value. Default False, optional
+:keyword block: bool - websocket client only: block main thread until result arrives and return the value. 
+                Default is object's configured default, optional
 
 Output: An object containing various descriptive fields for the specified security
 ```
@@ -403,7 +409,8 @@ Inputs:
 :keyword cap_gain_short_tax: float. Default None, optional
 :keyword cap_gain_long_tax: float. Default None, optional
 :keyword callback: callable - websocket client only. Default None, optional
-:keyword block: bool - websocket client only: block main thread until result arrives and return the value. Default False, optional
+:keyword block: bool - websocket client only: block main thread until result arrives and return the value. 
+                Default is object's configured default, optional
 
 Output: An object containing various fixed income risk analytics measures for the specified security and parameters
 ```
@@ -465,7 +472,8 @@ Inputs:
 :keyword price: float. Default 100.0, optional
 :keyword shock_in_bp: int. Default None, optional
 :keyword callback: callable - websocket client only. Default None, optional
-:keyword block: bool - websocket client only: block main thread until result arrives and return the value. Default False, optional
+:keyword block: bool - websocket client only: block main thread until result arrives and return the value. 
+                Default is object's configured default, optional
 
 Output: An object containing a vector time series of cash flow dates and corresponding amounts
 ```
