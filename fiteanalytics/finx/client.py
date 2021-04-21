@@ -420,7 +420,7 @@ class _SocketFinXClient(_SyncFinXClient):
 
     def _dispatch(self, api_method, **kwargs):
         """
-        Abstract method dispatch function
+        Abstract API dispatch function
         """
         if not self._socket.is_connected():
             self._init_socket()
@@ -462,7 +462,7 @@ class _SocketFinXClient(_SyncFinXClient):
 
     def _upload_batch_file(self, security_params):
         """
-        Send batch input file to server for later retrieval during dispatch on server side
+        Send batch input file to server for later retrieval in dispatch on server side
         """
         filename = f'{uuid4()}.csv'
         if type(security_params) in [pd.DataFrame, pd.Series]:
@@ -492,7 +492,7 @@ class _SocketFinXClient(_SyncFinXClient):
         """
         print('Parsing input...')
         if security_params is None and input_file is not None:
-            security_params = pd.read_csv(input_file).head(200).to_dict(orient='records')
+            security_params = pd.read_csv(input_file).to_dict(orient='records')
         assert security_params is not None and any(security_params)
         if getsizeof(security_params) > 1e6:  # Do file I/O if large batch
             print('Uploading file...')
@@ -536,11 +536,12 @@ class _SocketFinXClient(_SyncFinXClient):
         :param output_file: string - path to csv/txt file to output results to, default None, optional
         :keyword callback: callable - function to execute on result once received. Function signature should be:
 
-                        def callback(result, **kwargs):
+                        def callback(result, **kwargs): ...
 
-                  If keyword value specified is True or not null, uses the generic callback function _batch_callback()
-                  defined above. Default None, optional
-        :keyword block: bool - block main thread until result arrives and return the value. Default False, optional
+                  If True or not null, uses the generic callback function _batch_callback() defined above.
+                  Default None, optional
+        :keyword block: bool - block main thread until result arrives and return the value.
+                  Default is object's configured default, optional
         """
         assert batch_method != 'list_api_functions' and (security_params is not None or input_file is not None)
         callback = kwargs.get('callback')

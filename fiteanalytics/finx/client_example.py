@@ -11,7 +11,7 @@ finx = FinXClient('socket')
 
 # Get API methods
 print('\n*********** API Methods ***********')
-api_methods = finx.list_api_functions(block=True)
+api_methods = finx.list_api_functions()
 print(json.dumps(api_methods, indent=4))
 
 security_id = 'USQ98418AH10'
