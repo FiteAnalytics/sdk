@@ -8,6 +8,26 @@ from asgiref.sync import AsyncToSync
 
 from fiteanalytics.finx.client import FinXClient
 
+BATCH_INPUTS = [
+    {
+        'security_id': '9127962F5',
+        'as_of_date': '2021-03-24',
+        'foo': 'bar'
+    },
+    {
+        'security_id': 'USQ98418AH10',
+        'as_of_date': '2020-09-14'
+    },
+    {
+        'security_id': '912796B24',
+        'as_of_date': '2021-04-01'
+    },
+    {
+        'security_id': '912796F61',
+        'as_of_date': '2021-04-01'
+    }
+]
+
 
 def sync_client_test():
     finx = FinXClient()
@@ -18,27 +38,7 @@ def sync_client_test():
     print('\n' + '*'*20 + 'GET SECURITY CASH FLOWS' + '*'*20 + '\n')
     finx.get_security_cash_flows('9127962F5', as_of_date='2021-03-24')
     print('\n' + '*'*20 + 'BATCH SECURITY ANALYTICS' + '*'*20 + '\n')
-    finx.batch_security_analytics(
-        [
-            {
-                'security_id': '9127962F5',
-                'as_of_date': '2021-03-24',
-                'foo': 'bar'
-            },
-            {
-                'security_id': 'USQ98418AH10',
-                'as_of_date': '2020-09-14'
-            },
-            {
-                'security_id': '912796B24',
-                'as_of_date': '2021-04-01'
-            },
-            {
-                'security_id': '912796F61',
-                'as_of_date': '2021-04-01'
-            }
-        ]
-    )
+    finx.batch_security_analytics(BATCH_INPUTS)
     finx._session.close()
 
 
@@ -53,27 +53,7 @@ async def async_client_test():
     print('\n' + '*'*20 + 'GET SECURITY CASH FLOWS' + '*'*20 + '\n')
     tasks.append(finx.get_security_cash_flows('9127962F5', as_of_date='2021-03-24'))
     print('\n' + '*'*20 + 'BATCH SECURITY ANALYTICS' + '*'*20 + '\n')
-    tasks.append(finx.batch_security_analytics(
-        [
-            {
-                'security_id': '9127962F5',
-                'as_of_date': '2021-03-24',
-                'foo': 'bar'
-            },
-            {
-                'security_id': 'USQ98418AH10',
-                'as_of_date': '2020-09-14'
-            },
-            {
-                'security_id': '912796B24',
-                'as_of_date': '2021-04-01'
-            },
-            {
-                'security_id': '912796F61',
-                'as_of_date': '2021-04-01'
-            }
-        ]
-    ))
+    tasks.append(finx.batch_security_analytics(BATCH_INPUTS))
     await asyncio.gather(*tasks)
     await finx._session.close()
 
@@ -88,9 +68,7 @@ def socket_client_test():
     print('\n' + '*'*20 + 'GET SECURITY CASH FLOWS' + '*'*20 + '\n')
     keys.append(finx.get_security_cash_flows('9127962F5', as_of_date='2021-03-24'))
     print('\n' + '*'*20 + 'BATCH SECURITY ANALYTICS' + '*'*20 + '\n')
-    keys.append(finx.batch_security_analytics(
-        input_file='/Users/jakemathai/Desktop/coverage.csv',
-        output_file='/Users/jakemathai/Desktop/analytics_output.csv'))
+    keys.append(finx.batch_security_analytics(BATCH_INPUTS))
     remaining_tasks = {key: finx.cache.get(key) for key in keys}
     keys = [key for key, value in remaining_tasks.items() if value is None]
     while any(remaining_tasks):

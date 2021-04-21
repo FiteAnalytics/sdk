@@ -38,19 +38,12 @@ class _SyncFinXClient:
         Client constructor - supports keywords finx_api_key and finx_api_endpoint, or
         FINX_API_KEY and FINX_API_ENDPOINT environment variables
         """
-        self.__api_key = kwargs.get('finx_api_key')
-        self.__api_url = kwargs.get('finx_api_endpoint')
-        if self.__api_key is None:
-            self.__api_key = os.environ.get('FINX_API_KEY')
-            self.__api_url = os.environ.get('FINX_API_ENDPOINT')
+        self.__api_key = kwargs.get('finx_api_key') or os.environ.get('FINX_API_KEY')
         if self.__api_key is None:
             raise Exception('API key not found - please include the keyword argument '
                             'finx_api_key or set the environment variable FINX_API_KEY')
-        if self.__api_url is None:
-            self.__api_url = DEFAULT_API_URL
-        self.cache_size = kwargs.get('cache_size')
-        if self.cache_size is None:
-            self.cache_size = 100
+        self.__api_url = kwargs.get('finx_api_endpoint') or os.environ.get('FINX_API_ENDPOINT') or DEFAULT_API_URL
+        self.cache_size = kwargs.get('cache_size') or 100
         self.cache = LRU(self.cache_size)
         self._session = requests.session() if kwargs.get('session', True) else None
         self._executor = ThreadPoolExecutor() if kwargs.get('executor', True) else None
@@ -93,7 +86,7 @@ class _SyncFinXClient:
         self.cache[cache_key] = data
         return data
 
-    def get_api_methods(self, **kwargs):
+    def list_api_functions(self, **kwargs):
         """
         List API methods with parameter specifications
         """
@@ -144,13 +137,12 @@ class _SyncFinXClient:
         """
         return self._dispatch('security_cash_flows', security_id=security_id, **kwargs)
 
-
     async def _dispatch_batch(self, api_method, security_params, **kwargs):
         """
         Abstract batch request dispatch function. Issues a request for each input
         """
         assert self._executor is not None \
-            and api_method != 'list_api_methods' \
+            and api_method != 'list_api_functions' \
             and type(security_params) is list \
             and len(security_params) < 100
         tasks = [self._executor.submit(self._dispatch, api_method, **security_param, **kwargs)
@@ -200,7 +192,6 @@ class _AsyncFinXClient(_SyncFinXClient):
         super().__init__(**kwargs, session=False, executor=False)
         self.__api_key = self.get_api_key()
         self.__api_url = self.get_api_url()
-        self._session = None
 
     async def _dispatch(self, api_method, **kwargs):
         """
@@ -233,7 +224,7 @@ class _AsyncFinXClient(_SyncFinXClient):
             self.cache[cache_key] = data
             return data
 
-    async def get_api_methods(self, **kwargs):
+    async def list_api_functions(self, **kwargs):
         """
         List API methods with parameter specifications
         """
@@ -288,7 +279,7 @@ class _AsyncFinXClient(_SyncFinXClient):
         """
         Abstract batch request dispatch function. Issues a request for each input
         """
-        assert api_method != 'list_api_methods' \
+        assert api_method != 'list_api_functions' \
             and type(security_params) is list \
             and len(security_params) < 100
         try:
@@ -501,7 +492,8 @@ class _SocketFinXClient(_SyncFinXClient):
         if security_params is None and input_file is not None:
             security_params = pd.read_csv(input_file).head(200).to_dict(orient='records')
         assert security_params is not None and any(security_params)
-        if getsizeof(security_params) > 1:  # Do file I/O if large batch
+        print(security_params)
+        if getsizeof(security_params) > 10e6:  # Do file I/O if large batch
             print('Uploading file...')
             return self._upload_batch_file(security_params)
         return security_params
@@ -534,7 +526,7 @@ class _SocketFinXClient(_SyncFinXClient):
         """
         Abstract batch request dispatch function. Issues a single request containing all inputs
         """
-        assert security_params is not None or input_file is not None
+        assert batch_method != 'list_api_functions' and (security_params is not None or input_file is not None)
         return self._dispatch(
             batch_method,
             security_params=self._get_batch_input(security_params, input_file),
@@ -594,15 +586,3 @@ def FinXClient(kind='sync', **kwargs):
     if kind == 'async':
         return _AsyncFinXClient(**kwargs)
     return _SyncFinXClient(**kwargs)
-
-
-"""
-from fiteanalytics.finx.client import FinXClient
-
-def run_batch(client):
-    client.batch_security_cash_flows(input_file='/Users/jakemathai/Desktop/coverage.csv')
-            
-
-finx = FinXClient('socket')
-run_batch(finx)
-"""
