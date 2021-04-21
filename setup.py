@@ -10,12 +10,7 @@ setup(
     license='APGL3',
     packages=find_packages(exclude=('*.tests',)),
     url='https://github.com/FiteAnalytics/sdk',
-    install_requires=[
-        'aiohttp',
-        'asyncio',
-        'lru',
-        'websocket-client'
-    ],
+    install_requires=[x.split('==')[0] for x in open('requirements.txt').readlines()],
     # include_package_data is needed to reference MANIFEST.in
     include_package_data=True,
 )
