@@ -341,7 +341,7 @@ class _SocketFinXClient(_SyncFinXClient):
         self.__api_url = super().get_api_url()
         self.ssl = kwargs.get('ssl', False)
         self.is_authenticated = False
-        self.block = kwargs.get('block') or True
+        self.block = kwargs.get('block', True)
         self._init_socket()
 
     def _run_socket(self, url, on_open, on_message, on_error):
@@ -494,7 +494,7 @@ class _SocketFinXClient(_SyncFinXClient):
         if security_params is None and input_file is not None:
             security_params = pd.read_csv(input_file).head(200).to_dict(orient='records')
         assert security_params is not None and any(security_params)
-        if getsizeof(security_params) > 10e6:  # Do file I/O if large batch
+        if getsizeof(security_params) > 1e6:  # Do file I/O if large batch
             print('Uploading file...')
             return self._upload_batch_file(security_params)
         return security_params
