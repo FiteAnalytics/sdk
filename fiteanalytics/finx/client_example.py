@@ -44,7 +44,7 @@ cash_flows = finx.get_security_cash_flows(
 print(json.dumps(cash_flows, indent=4))
 
 # Batch get security reference data
-print('\n*********** Batch Get Security Reference Data ***********')
+print('\n*********** Batch Coverage Check ***********')
 batch_reference_data = finx.batch_coverage_check(
     [
         {'security_id': 'USQ98418AH10'},
