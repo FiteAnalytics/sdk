@@ -195,7 +195,7 @@ class _AsyncFinXClient(_SyncFinXClient):
 
     async def _dispatch(self, api_method, **kwargs):
         """
-        Abstract unitary request dispatch function
+        Abstract request dispatch function
         """
         if self._session is None:
             self._session = ClientSession()
@@ -341,6 +341,7 @@ class _SocketFinXClient(_SyncFinXClient):
         self.__api_url = super().get_api_url()
         self.ssl = kwargs.get('ssl', False)
         self.is_authenticated = False
+        self.block = kwargs.get('block') or True
         self._init_socket()
 
     def _run_socket(self, url, on_open, on_message, on_error):
@@ -374,7 +375,6 @@ class _SocketFinXClient(_SyncFinXClient):
         def on_message(socket, message):
             try:
                 message = json.loads(message)
-                print(message)
                 if message.get('is_authenticated'):
                     print('Successfully authenticated')
                     self.is_authenticated = True
@@ -387,6 +387,8 @@ class _SocketFinXClient(_SyncFinXClient):
                     data = message.get('data', message.get('message', {}))
                 if type(data) is list or (type(data) is dict and data.get('progress') is None):
                     self.cache[message['cache_key']] = data
+                else:
+                    print(message)
             except Exception as e:
                 print(f'Socket on_message error: {e}')
             return None
@@ -448,7 +450,7 @@ class _SocketFinXClient(_SyncFinXClient):
             return cached_response
         payload['cache_key'] = cache_key
         self._socket.send(json.dumps(payload))
-        block = kwargs.get('block')
+        block = kwargs.get('block') or self.block
         if callable(callback):
             if block:
                 self._listen_for_result(cache_key, callback, **kwargs)
@@ -492,7 +494,6 @@ class _SocketFinXClient(_SyncFinXClient):
         if security_params is None and input_file is not None:
             security_params = pd.read_csv(input_file).head(200).to_dict(orient='records')
         assert security_params is not None and any(security_params)
-        print(security_params)
         if getsizeof(security_params) > 10e6:  # Do file I/O if large batch
             print('Uploading file...')
             return self._upload_batch_file(security_params)
