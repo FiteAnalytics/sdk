@@ -64,7 +64,8 @@ batch_reference_data = finx.batch_coverage_check(
         {'security_id': 'ARARGE3209S6'},
         {'security_id': 'ARARGE3209T4'},
         {'security_id': 'ARARGE3209U2'},
-        {'security_id': 'ARARGE3209Y4'}
+        {'security_id': 'ARARGE3209Y4'},
+        {'security_id': 'COMPLETENONSENSE'}
     ]
 )
 print(json.dumps(batch_reference_data, indent=4))
