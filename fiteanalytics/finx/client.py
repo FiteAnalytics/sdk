@@ -32,12 +32,13 @@ def _get_cache_key(params):
     key = ''
     security_id = params.get('security_id')
     if security_id is not None:
-        key += security_id
+        key += security_id + ','
     api_method = params.get('api_method')
     if api_method is not None:
-        key += api_method
+        key += api_method + ','
     return key + ','.join(
-        [f'{key}:{params[key]}' for key in sorted(params.keys()) if key != 'security_id' and key != 'api_method'])
+        [f'{key}:{params[key]}' for key in sorted(params.keys())
+         if key not in ['security_id', 'api_method', 'input_file', 'output_file']])
 
 
 class _SyncFinXClient:
@@ -52,7 +53,7 @@ class _SyncFinXClient:
             raise Exception('API key not found - please include the keyword argument '
                             'finx_api_key or set the environment variable FINX_API_KEY')
         self.__api_url = kwargs.get('finx_api_endpoint') or os.environ.get('FINX_API_ENDPOINT') or DEFAULT_API_URL
-        self.cache_size = kwargs.get('cache_size') or 10000
+        self.cache_size = kwargs.get('cache_size') or 100000
         self.cache = LRU(self.cache_size)
         self._session = requests.session() if kwargs.get('session', True) else None
         self._executor = ThreadPoolExecutor() if kwargs.get('executor', True) else None
@@ -73,8 +74,6 @@ class _SyncFinXClient:
         request_body = {
             'finx_api_key': self.__api_key,
             'api_method': api_method,
-            'input_file': None,
-            'output_file': None
         }
         if any(kwargs):
             request_body.update({
@@ -94,7 +93,6 @@ class _SyncFinXClient:
         if error is not None:
             print(f'API returned error: {error}')
             return data
-        # self.set_cache(cache_keys, data)
         self.cache[cache_key] = data
         return data
 
@@ -214,8 +212,6 @@ class _AsyncFinXClient(_SyncFinXClient):
         request_body = {
             'finx_api_key': self.__api_key,
             'api_method': api_method,
-            'input_file': None,
-            'output_file': None
         }
         if any(kwargs):
             request_body.update({
@@ -406,12 +402,10 @@ class _SocketFinXClient(_SyncFinXClient):
                         return None
                     if type(data) is list and type(data[0]) is dict:
                         for key in cache_keys:
-                            if self.cache.get(key) is None:
-                                self.cache[key] = next(item for item in data if item.get('security_id') in key)
+                            self.cache.setdefault(key, next(item for item in data if item.get('security_id') in key))
                     else:
                         for key in cache_keys:
-                            if self.cache.get(key) is None:
-                                self.cache[key] = data
+                            self.cache.setdefault(key, data)
                 else:
                     print(message)
             except:
@@ -427,7 +421,7 @@ class _SocketFinXClient(_SyncFinXClient):
         print(f'Connecting to {url}')
         self._run_socket(url, on_message, on_error)
 
-    def _listen_for_result(self, cache_keys, callback=None, **kwargs):
+    def _listen_for_results(self, cache_keys, callback=None, **kwargs):
         """
         Async threadpool process listening for result of a request and execute callback upon arrival. Only used
         if callback specified in a function call
@@ -458,14 +452,13 @@ class _SocketFinXClient(_SyncFinXClient):
                 for key, value in file_cache_results.items():
                     self.cache[key] = value
             results = list(results.values())
+            output_file = kwargs.get('output_file')
+            if output_file is not None and len(results) > 0 and type(results[0]) in [list, dict]:
+                print(f'Writing data to {output_file}')
+                pd.DataFrame(results).to_csv(output_file, index=False)
             if callable(callback):
                 return callback(results, **kwargs, cache_keys=cache_keys)
-            if type(results) is list:
-                if len(results) > 1:
-                    return results
-                elif len(results) > 0:
-                    return results[0]
-            return results
+            return results if len(results) > 1 else results[0] if len(results) > 0 else results
         except:
             print(f'Failed to find result/execute callback: {format_exc()}')
 
@@ -473,7 +466,7 @@ class _SocketFinXClient(_SyncFinXClient):
         """
         Extract batch input data from either direct input or csv/txt file. Sends to server as a file if large
         """
-        print('Parsing input...')
+        print('Parsing batch input...')
         batch_input_df = (pd.read_csv if type(batch_input) is str else pd.DataFrame)(batch_input)
         cache_keys = [_get_cache_key({**base_cache_payload, **security_input})
                       for security_input in batch_input_df.to_dict(orient='records')]
@@ -489,6 +482,7 @@ class _SocketFinXClient(_SyncFinXClient):
         """
         Send batch input file to server for later retrieval in dispatch on server side
         """
+        print('Uploading batch file...')
         filename = f'{uuid4()}.csv'
         if type(batch_input) in [pd.DataFrame, pd.Series]:
             batch_input.to_csv(filename, index=False)
@@ -508,7 +502,7 @@ class _SocketFinXClient(_SyncFinXClient):
         os.remove(filename)
         if response['failed']:
             raise Exception(f'Failed to upload file: {response["message"]}')
-        print('File uploaded')
+        print('Batch file uploaded')
         return response['filename']
 
     def _dispatch(self, api_method, **kwargs):
@@ -550,13 +544,11 @@ class _SocketFinXClient(_SyncFinXClient):
                 return cached_responses
             print(f'{len(cached_responses)} out of {total_requests} requests found in cache')
             if getsizeof(outstanding_requests) > 1e6:
-                print('Uploading file...')
                 payload['batch_input'] = self._upload_batch_file(outstanding_requests)
             else:
                 payload['batch_input'] = outstanding_requests
             payload['api_method'] = 'batch_' + api_method
         else:
-            payload.update(input_file=None, output_file=None)
             cache_keys = [_get_cache_key(payload)]
             cached_response = self.cache.get(cache_keys[0])
             if cached_response is not None:
@@ -568,26 +560,10 @@ class _SocketFinXClient(_SyncFinXClient):
         self._socket.send(json.dumps(payload))
         block = kwargs.get('block', self.block)
         if block:
-            return self._listen_for_result(cache_keys, callback, **kwargs)
+            return self._listen_for_results(cache_keys, callback, **kwargs)
         if callable(callback):
-            self._executor.submit(self._listen_for_result, cache_keys, callback, **kwargs)
+            self._executor.submit(self._listen_for_results, cache_keys, callback, **kwargs)
         return cache_keys
-
-    def _batch_callback(self, result, **kwargs):
-        """
-        Generic callback function called upon batch completion. Fetches file result from server if result contains the
-        filename, else gets the result directly. Writes result to file if output file specified, else caches raw results
-        """
-        data = pd.DataFrame(result)
-        output_file = kwargs.get('output_file')
-        if output_file is not None:
-            self.cache[kwargs['cache_key']] = output_file
-            print(f'Writing data to {output_file}')
-            data.to_csv(output_file, index=False)
-        else:
-            self.cache[kwargs['cache_key']] = data.to_dict(orient='records')
-        print('Batch results available!')
-        return None
 
     def _dispatch_batch(self, batch_method, security_params=None, input_file=None, output_file=None, **kwargs):
         """
@@ -610,9 +586,6 @@ class _SocketFinXClient(_SyncFinXClient):
                   Default is object's configured default, optional
         """
         assert batch_method != 'list_api_functions' and (security_params or input_file)
-        callback = kwargs.get('callback')
-        if callback and not callable(callback):
-            kwargs['callback'] = self._batch_callback
         return self._dispatch(
             batch_method,
             batch_input=security_params or input_file,
@@ -657,22 +630,3 @@ def FinXClient(kind='sync', **kwargs):
     if kind == 'async':
         return _AsyncFinXClient(**kwargs)
     return _SyncFinXClient(**kwargs)
-
-"""
-from client import FinXClient
-finx = FinXClient('socket')
-finx.coverage_check('ARARGE03E105')
-finx.batch_coverage_check(
-    [
-        {'security_id': 'USQ98418AH10'},
-        {'security_id': '3133XXP50'},
-        {'security_id': 'ARARGE03E105'},
-        {'security_id': 'ARARGE3209S6'}
-    ]
-)
-finx.batch_coverage_check(
-    [
-        {'security_id': 'ARARGE03E105'}, {'security_id': 'ARARGE03E121'}, {'security_id': 'ARARGE03E121'}, {'security_id': 'ARARGE03E121'}, {'security_id': 'ARARGE03E147'}, {'security_id': 'ARARGE03G621'}, {'security_id': 'ARARGE3202H4'}, {'security_id': 'ARARGE320283'}, {'security_id': 'ARARGE3203R1'}, {'security_id': 'ARARGE3208K5'}, {'security_id': 'ARARGE3208S8'}, {'security_id': 'ARARGE3208T6'}, {'security_id': 'ARARGE3208U4'}, {'security_id': 'ARARGE3208X8'}, {'security_id': 'ARARGE3209H9'}, {'security_id': 'ARARGE3209S6'}, {'security_id': 'ARARGE3209T4'}, {'security_id': 'ARARGE3209U2'}, {'security_id': 'ARARGE3209Y4'}, {'security_id': 'ARARGE4502J2'}, {'security_id': 'ARARGE4502K0'}, {'security_id': 'ARARGE4502L8'}, {'security_id': 'ARARGE520AA5'}, {'security_id': 'ARARGE520A00'}, {'security_id': 'ARARGE520A67'}, {'security_id': 'ARARGE520A75'}, {'security_id': 'ARARGE520A91'}, {'security_id': 'ARARGE5209N5'}, {'security_id': 'ARCBAS3201C0'}, {'security_id': 'ARCBAS3201F3'}, {'security_id': 'ARCBAS3201J5'}, {'security_id': 'ARPANE560097'}, {'security_id': 'ARPBUE3204J9'}, {'security_id': 'ARPBUE3205N8'}, {'security_id': 'ARYPFS5600D2'}, {'security_id': 'ARYPFS5600Y8'}, {'security_id': 'AT000B015060'}, {'security_id': 'AT000B048988'}, {'security_id': 'AT000B049465'}, {'security_id': 'AT000B049572'}, {'security_id': 'AT000B049598'}, {'security_id': 'AT000B049754'}, {'security_id': 'AT000B049788'}, {'security_id': 'AT000B049796'}, {'security_id': 'AT000B049846'}, {'security_id': 'AT000B092622'}, {'security_id': 'AT000B093273'}, {'security_id': 'AT000B121967'}, {'security_id': 'AT000B121991'}, {'security_id': 'AT000B122031'}, {'security_id': 'AT000B122049'}, {'security_id': 'AT0000A0DXC2'}, {'security_id': 'AT0000A0N9A0'}, {'security_id': 'AT0000A0U299'}, {'security_id': 'AT0000A0U3T4'}, {'security_id': 'AT0000A0VRQ6'}, {'security_id': 'AT0000A0V834'}, {'security_id': 'AT0000A0X913'}, {'security_id': 'AT0000A001X2'}, {'security_id': 'AT0000A04967'}, {'security_id': 'AT0000A1D5E1'}, {'security_id': 'AT0000A1FAP5'}, {'security_id': 'AT0000A1K9C8'}, {'security_id': 'AT0000A1K9F1'}, {'security_id': 'AT0000A1LHT0'}, {'security_id': 'AT0000A1PEF7'}, {'security_id': 'AT0000A1PE50'}, {'security_id': 'AT0000A1VGK0'}, {'security_id': 'AT0000A1XML2'}, {'security_id': 'AT0000A1XM92'}, {'security_id': 'AT0000A1ZGE4'}, {'security_id': 'AT0000A105W3'}, {'security_id': 'AT0000A10683'}, {'security_id': 'AT0000A12GN0'}, {'security_id': 'AT0000A185T1'}, {'security_id': 'AT0000A2AYL3'}, {'security_id': 'AT0000A2A6W3'}, {'security_id': 'AT0000A2CDT6'}, {'security_id': 'AT0000A2CFT1'}, {'security_id': 'AT0000A2CQD2'}, {'security_id': 'AT0000A2EJZ6'}, {'security_id': 'AT0000A2EJ08'}, {'security_id': 'AT0000A2GH08'}, {'security_id': 'AT0000A2GLA0'}, {'security_id': 'AT0000A2HLC4'}, {'security_id': 'AT0000A2JAF6'}, {'security_id': 'AT0000A2J645'}, {'security_id': 'AT0000A2KQ43'}, {'security_id': 'AT0000A2KW37'}, {'security_id': 'AT0000A2L583'}, {'security_id': 'AT0000A208R5'}, {'security_id': 'AT0000A228U7'}, {'security_id': 'AT0000A269M8'}, {'security_id': 'AT0000A28KX7'}, {'security_id': 'AT0000A286W1'}, {'security_id': 'AT0000330683'}, {'security_id': 'AT0000383864'}, {'security_id': 'AT0000386073'}, {'security_id': 'AU00B0825672'}, {'security_id': 'AU000CNFL011'}
-    ]
-)
-"""

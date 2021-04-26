@@ -12,7 +12,6 @@ BATCH_INPUTS = [
     {
         'security_id': '9127962F5',
         'as_of_date': '2021-03-24',
-        'foo': 'bar'
     },
     {
         'security_id': 'USQ98418AH10',
