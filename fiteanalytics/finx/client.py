@@ -10,9 +10,9 @@ import requests
 import pandas as pd
 
 from lru import LRU
-from time import sleep
 from uuid import uuid4
 from gc import collect
+from time import sleep
 from io import StringIO
 from sys import getsizeof
 from threading import Thread
