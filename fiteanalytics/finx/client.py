@@ -396,18 +396,18 @@ class _SocketFinXClient(_SyncFinXClient):
                     data = error
                 else:
                     data = message.get('data', message.get('message', {}))
-                if type(data) is list or (type(data) is dict and data.get('progress') is None):
-                    cache_keys = message['cache_keys']
-                    if cache_keys is None:
-                        return None
-                    if type(data) is list and type(data[0]) is dict:
-                        for key in cache_keys:
-                            self.cache.setdefault(key, next(item for item in data if item.get('security_id') in key))
-                    else:
-                        for key in cache_keys:
-                            self.cache.setdefault(key, data)
-                else:
+                if type(data) is not list and (type(data) is not dict or data.get('progress') is not None):
                     print(message)
+                    return None
+                cache_keys = message.get('cache_keys')
+                if cache_keys is None:
+                    return None
+                if type(data) is list and type(data[0]) is dict:
+                    for key in cache_keys:
+                        self.cache.setdefault(key, next((item for item in data if item.get('security_id') in key), None))
+                else:
+                    for key in cache_keys:
+                        self.cache.setdefault(key, data)
             except:
                 print(f'Socket on_message error: {format_exc()}')
             return None
@@ -527,12 +527,14 @@ class _SocketFinXClient(_SyncFinXClient):
                 key: value for key, value in kwargs.items()
                 if key != 'finx_api_key' and key != 'api_method'
             })
-        if api_method == 'security_analytics':
+        if 'security_analytics' in api_method:
             payload['use_kalotay_analytics'] = False
         if kwargs.pop('is_batch', False):
             batch_input = kwargs.pop('batch_input')
             base_cache_payload = kwargs.copy()
             base_cache_payload['api_method'] = api_method
+            if 'security_analytics' in api_method:
+                base_cache_payload['use_kalotay_analytics'] = False
             cache_keys, cached_responses, outstanding_requests = self._parse_batch_input(
                 batch_input,
                 base_cache_payload)
