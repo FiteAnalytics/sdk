@@ -351,7 +351,7 @@ class _SocketFinXClient(_SyncFinXClient):
         self.__api_url = super().get_api_url()
         self.ssl = kwargs.get('ssl', False)
         self.is_authenticated = False
-        self.block = kwargs.get('block', True)
+        self.blocking = kwargs.get('blocking', True)
         self._init_socket()
 
     def authenticate(self):
@@ -404,7 +404,8 @@ class _SocketFinXClient(_SyncFinXClient):
                     return None
                 if type(data) is list and type(data[0]) is dict:
                     for key in cache_keys:
-                        self.cache.setdefault(key, next((item for item in data if item.get('security_id') in key), None))
+                        if key not in self.cache:
+                            self.cache[key] = next((item for item in data if item.get('security_id') in key), None)
                 else:
                     for key in cache_keys:
                         self.cache.setdefault(key, data)
@@ -560,8 +561,8 @@ class _SocketFinXClient(_SyncFinXClient):
                 return cached_response
         payload['cache_keys'] = cache_keys
         self._socket.send(json.dumps(payload))
-        block = kwargs.get('block', self.block)
-        if block:
+        blocking = kwargs.get('blocking', self.blocking)
+        if blocking:
             return self._listen_for_results(cache_keys, callback, **kwargs)
         if callable(callback):
             self._executor.submit(self._listen_for_results, cache_keys, callback, **kwargs)
@@ -584,7 +585,7 @@ class _SocketFinXClient(_SyncFinXClient):
 
                   If True or not null, uses the generic callback function _batch_callback() defined above.
                   Default None, optional
-        :keyword block: bool - block main thread until result arrives and return the value.
+        :keyword blocking: bool - block main thread until result arrives and return the value.
                   Default is object's configured default, optional
         """
         assert batch_method != 'list_api_functions' and (security_params or input_file)

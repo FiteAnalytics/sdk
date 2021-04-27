@@ -42,13 +42,12 @@ print(json.dumps(cash_flows, indent=4))
 
 # Batch get security reference data
 print('\n*********** Batch Coverage Check ***********')
+finx.coverage_check('USQ98418AH10')
 batch_reference_data = finx.batch_coverage_check(
     [
         {'security_id': 'USQ98418AH10'},
         {'security_id': '3133XXP50'},
         {'security_id': 'ARARGE03E105'},
-        {'security_id': 'ARARGE03E121'},
-        {'security_id': 'ARARGE03E121'},
         {'security_id': 'ARARGE03E121'},
         {'security_id': 'ARARGE03E147'},
         {'security_id': 'ARARGE03G621'},
