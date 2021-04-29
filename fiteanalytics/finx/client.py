@@ -372,7 +372,7 @@ class _SocketFinXClient(_SyncFinXClient):
             self._socket_thread = Thread(
                 target=self._socket.run_forever,
                 daemon=True,
-                kwargs={'skip_utf8_validation': True})
+                kwargs={'skip_utf8_validation': True, 'sslopt': {'check_hostname': False}})
             self._socket_thread.start()
         except Exception as e:
             raise Exception(f'Failed to connect to {url}: {e}')
