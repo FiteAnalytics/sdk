@@ -135,7 +135,7 @@ class _SyncFinXClient:
             })
         if api_method == 'security_analytics':
             request_body['use_kalotay_analytics'] = False
-        cached_response, cache_keys, params_key = self.check_cache(api_method, kwargs.get('security_id'), request_body)
+        cached_response, cache_key, params_key = self.check_cache(api_method, kwargs.get('security_id'), request_body)
         if cached_response is not None:
             print('Found in cache')
             return cached_response
@@ -471,9 +471,10 @@ class _SocketFinXClient(_SyncFinXClient):
                     return None
                 return_iterable = type(data) is list and type(data[0]) is dict
                 for key in cache_keys:
-                    self.cache[key[1]][key[2]] = next(
-                        (item for item in data if item.get('security_id') in key),
+                    value = next(
+                        (item for item in data if item.get("security_id") in key[1]),
                         None) if return_iterable else data
+                    self.cache[key[1]][key[2]] = value
             except:
                 print(f'Socket on_message error: {format_exc()}')
             return None
@@ -498,8 +499,9 @@ class _SocketFinXClient(_SyncFinXClient):
             remaining_keys = cache_keys
             while len(remaining_keys) != 0:
                 sleep(0.01)
-                results = [self.cache.get(key[1], dict()).get(key[2], None) for key in remaining_keys]
-                remaining_keys = [remaining_keys[index] for index, value in enumerate(results) if value is None]
+                remaining_results = [self.cache.get(key[1], dict()).get(key[2], None) for key in remaining_keys]
+                remaining_keys = [remaining_keys[index] for index, value in enumerate(remaining_results) if value is None]
+                results += [x for x in remaining_results if x is not None]
             file_results = [value for value in results
                             if type(value) is dict and value.get('filename') is not None]
             if any(file_results):
@@ -629,7 +631,7 @@ class _SocketFinXClient(_SyncFinXClient):
                     return callback(cache_keys[0], **kwargs, cache_keys=cache_keys)
                 return cache_keys[0]
             cache_keys = [cache_keys]
-        payload['cache_key'] = cache_keys
+        payload['cache_key'] = cache_keys#[x for x in cache_keys if x['']]
         self._socket.send(json.dumps(payload))
         blocking = kwargs.get('blocking', self.blocking)
         if blocking:
