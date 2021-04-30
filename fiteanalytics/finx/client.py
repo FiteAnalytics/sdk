@@ -541,12 +541,10 @@ class _SocketFinXClient(_SyncFinXClient):
                 {**base_cache_payload, **security_input})
             for security_input in batch_input_df.to_dict(orient='records')]
         batch_input_df['cached_responses'] = batch_input_df['cache_keys'].map(lambda x: x[0])
+        cache_keys = batch_input_df['cache_keys'].tolist()
         cached_responses = batch_input_df.loc[
             batch_input_df['cached_responses'].notnull()]['cached_responses'].tolist()
         outstanding_requests = batch_input_df.loc[batch_input_df['cached_responses'].isnull()]
-        print(batch_input_df)
-        cache_keys = outstanding_requests['cache_keys'].tolist()
-        cached_responses = outstanding_requests['cached_responses'].tolist()
         outstanding_requests.drop(['cache_keys', 'cached_responses'], axis=1, inplace=True)
         return cache_keys, cached_responses, outstanding_requests.to_dict(orient='records')
 
