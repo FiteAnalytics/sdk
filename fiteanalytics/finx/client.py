@@ -547,7 +547,7 @@ class _SocketFinXClient(_SyncFinXClient):
         cached_responses = batch_input_df.loc[
             batch_input_df['cached_responses'].notnull()]['cached_responses'].tolist()
         outstanding_requests = batch_input_df.loc[batch_input_df['cached_responses'].isnull()]
-        outstanding_requests.drop(['cache_keys', 'cached_responses'], axis=1, inplace=True)
+#         outstanding_requests.drop(['cache_keys', 'cached_responses'], axis=1, inplace=True)
         return cache_keys, cached_responses, outstanding_requests.to_dict(orient='records')
 
     def _upload_batch_file(self, batch_input):
@@ -631,7 +631,7 @@ class _SocketFinXClient(_SyncFinXClient):
                     return callback(cache_keys[0], **kwargs, cache_keys=cache_keys)
                 return cache_keys[0]
             cache_keys = [cache_keys]
-        payload['cache_key'] = cache_keys#[x for x in cache_keys if x['']]
+        payload['cache_key'] = cache_keys if not isinstance(payload['batch_input'], str) else []
         self._socket.send(json.dumps(payload))
         blocking = kwargs.get('blocking', self.blocking)
         if blocking:
