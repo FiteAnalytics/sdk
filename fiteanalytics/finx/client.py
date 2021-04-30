@@ -4,6 +4,7 @@ Author: Jake Mathai
 Purpose: Client classes for exposing the FinX API endpoints
 """
 import os
+import copy
 import json
 import asyncio
 import requests
@@ -28,17 +29,51 @@ enableTrace(False)
 DEFAULT_API_URL = 'https://sandbox.finx.io/api/'
 
 
-def _get_cache_key(params):
-    key = ''
-    security_id = params.get('security_id')
-    if security_id is not None:
-        key += security_id + ','
-    api_method = params.get('api_method')
-    if api_method is not None:
-        key += api_method + ','
-    return key + ','.join(
-        [f'{key}:{params[key]}' for key in sorted(params.keys())
-         if key not in ['security_id', 'api_method', 'input_file', 'output_file']])
+"""
+EXAMPLE OF CACHE:
+CACHE = {
+  # TIER 1 KEYS:
+  API_METHOD_W/OUT_SECURITY_ID_PARAM_1: 
+    LRU(MAX_SIZE_METHOD) -> {PARAMS_1: CACHED_RESULT_1, ..., PARAMS_MAX_SIZE_METHOD: CACHED_RESULT_MAX_SIZE_METHOD},
+  MY_SECURITY_ID:
+    SECURITY_REFERENCE:
+      LRU(3) -> {
+          PARAMS_1: PARAMS_1_REF_DATA,
+          PARAMS_2: PARAMS_2_REF_DATA,
+          PARAMS_3: PARAMS_3_REF_DATA
+        }
+    SECURITY_ANALYTICS:
+      LRU(3) -> {
+          PARAMS_1: PARAMS_1_ANALYTICS,
+          PARAMS_2: PARAMS_2_ANALYTICS,
+          PARAMS_3: PARAMS_3_ANALYTICS
+        }
+    SECURITY_CASH_FLOWS: 
+      LRU(1) -> {
+          LAST_PARAMS: LAST_CF_DATAFRAME
+        }
+}
+
+f = _SyncFinXClient()
+y = f.get_cache_keys('blah', {'security_id': 'hello', 'as_of_date': '20210101'})
+f.recall_cache_value(y)
+
+x = f.get_cache_keys('testme', {})
+f.recall_cache_value(x)
+"""
+
+
+# def _get_cache_key(params):
+#     key = ''
+#     security_id = params.get('security_id')
+#     if security_id is not None:
+#         key += security_id + ','
+#     api_method = params.get('api_method')
+#     if api_method is not None:
+#         key += api_method + ','
+#     return key + ','.join(
+#         [f'{key}:{params[key]}' for key in sorted(params.keys())
+#          if key not in ['security_id', 'api_method', 'input_file', 'output_file']])
 
 
 class _SyncFinXClient:
@@ -57,6 +92,7 @@ class _SyncFinXClient:
         self.cache = LRU(self.cache_size)
         self._session = requests.session() if kwargs.get('session', True) else None
         self._executor = ThreadPoolExecutor() if kwargs.get('executor', True) else None
+        self.cache_method_size = dict(security_analytics=3, cash_flows=1, reference_data=3)
 
     def get_api_key(self):
         return self.__api_key
@@ -68,6 +104,23 @@ class _SyncFinXClient:
         self.cache.clear()
         collect()
         return None
+
+    def check_cache(self, api_method, security_id=None, params=None):
+        params = dict() if params is None else params
+        cache_key = ''
+        cache_key += f'{security_id}' if security_id else ''
+        cache_key += f'{api_method}'
+        params_key = ','.join(
+            [f'{key}:{params[key]}' for key in sorted(params.keys())
+             if key not in ['security_id', 'api_method', 'input_file', 'output_file']])
+        params_key = params_key if len(params_key) > 0 else 'NONE'
+        cached_value = self.cache.get(cache_key)
+        if cached_value is None:
+            self.cache[cache_key] = LRU(1) if security_id is None else LRU(self.cache_method_size.get(api_method, 1))
+            self.cache[cache_key][params_key] = None
+        else:
+            cached_value = cached_value.get(params_key)
+        return cached_value, cache_key, params_key
 
     def _dispatch(self, api_method, **kwargs):
         assert self._session is not None
@@ -82,8 +135,7 @@ class _SyncFinXClient:
             })
         if api_method == 'security_analytics':
             request_body['use_kalotay_analytics'] = False
-        cache_key = _get_cache_key(request_body)
-        cached_response = self.cache.get(cache_key)
+        cached_response, cache_keys, params_key = self.check_cache(api_method, kwargs.get('security_id'), request_body)
         if cached_response is not None:
             print('Found in cache')
             return cached_response
@@ -93,7 +145,7 @@ class _SyncFinXClient:
         if error is not None:
             print(f'API returned error: {error}')
             return data
-        self.cache[cache_key] = data
+        self.cache[cache_key][params_key] = data
         return data
 
     def list_api_functions(self, **kwargs):
@@ -147,14 +199,30 @@ class _SyncFinXClient:
         """
         return self._dispatch('security_cash_flows', security_id=security_id, **kwargs)
 
+    def get_curve(self, curve_name, currency, start_date, end_date=None):
+        """
+        Yield curve function
+
+       :param curve_name: string
+       :param currency: string
+       :param start_date: string as YYYY-MM-DD
+       :keyword end_date: string as YYYY-MM-DD. Default None, optional
+       """
+        return self._dispatch(
+            'get_curve',
+            curve_name=curve_name,
+            currency=currency,
+            start_date=start_date,
+            end_date=end_date if end_date is not None else start_date)
+
     def _dispatch_batch(self, api_method, security_params, **kwargs):
         """
         Abstract batch request dispatch function. Issues a request for each input
         """
         assert self._executor is not None \
-            and api_method != 'list_api_functions' \
-            and type(security_params) is list \
-            and len(security_params) < 100
+               and api_method != 'list_api_functions' \
+               and type(security_params) is list \
+               and len(security_params) < 100
         tasks = [self._executor.submit(self._dispatch, api_method, **security_param, **kwargs)
                  for security_param in security_params]
         return [task.result() for task in tasks]
@@ -220,8 +288,7 @@ class _AsyncFinXClient(_SyncFinXClient):
             })
         if api_method == 'security_analytics':
             request_body['use_kalotay_analytics'] = False
-        cache_key = _get_cache_key(request_body)
-        cached_response = self.cache.get(cache_key)
+        cached_response = self.check_cache()
         if cached_response is not None:
             print('Request found in cache')
             return cached_response
@@ -290,8 +357,8 @@ class _AsyncFinXClient(_SyncFinXClient):
         Abstract batch request dispatch function. Issues a request for each input
         """
         assert api_method != 'list_api_functions' \
-            and type(security_params) is list \
-            and len(security_params) < 100
+               and type(security_params) is list \
+               and len(security_params) < 100
         try:
             asyncio.get_event_loop()
         except:
@@ -399,16 +466,14 @@ class _SocketFinXClient(_SyncFinXClient):
                 if type(data) is not list and (type(data) is not dict or data.get('progress') is not None):
                     print(message)
                     return None
-                cache_keys = message.get('cache_keys')
+                cache_keys = message.get('cache_key')
                 if cache_keys is None:
                     return None
-                if type(data) is list and type(data[0]) is dict:
-                    for key in cache_keys:
-                        if key not in self.cache:
-                            self.cache[key] = next((item for item in data if item.get('security_id') in key), None)
-                else:
-                    for key in cache_keys:
-                        self.cache.setdefault(key, data)
+                return_iterable = type(data) is list and type(data[0]) is dict
+                for key in cache_keys:
+                    self.cache[key[1]][key[2]] = next(
+                        (item for item in data if item.get('security_id') in key),
+                        None) if return_iterable else data
             except:
                 print(f'Socket on_message error: {format_exc()}')
             return None
@@ -428,14 +493,14 @@ class _SocketFinXClient(_SyncFinXClient):
         if callback specified in a function call
         """
         try:
-            results = {}
+            # results = {}
+            results = []
             remaining_keys = cache_keys
             while len(remaining_keys) != 0:
-                sleep(.01)
-                cached_responses = {key: self.cache.get(key) for key in remaining_keys}
-                results.update({key: value for key, value in cached_responses.items() if value is not None})
-                remaining_keys = [key for key, value in cached_responses.items() if value is None]
-            file_results = [(key, value) for key, value in results.items()
+                sleep(0.01)
+                results = [self.cache.get(key[1], dict()).get(key[2], None) for key in remaining_keys]
+                remaining_keys = [remaining_keys[index] for index, value in enumerate(results) if value is None]
+            file_results = [value for value in results
                             if type(value) is dict and value.get('filename') is not None]
             if any(file_results):
                 print('Downloading results...')
@@ -452,7 +517,7 @@ class _SocketFinXClient(_SyncFinXClient):
                 print('Updating cache with file data...')
                 for key, value in file_cache_results.items():
                     self.cache[key] = value
-            results = list(results.values())
+            # results = list(results.values())
             output_file = kwargs.get('output_file')
             if output_file is not None and len(results) > 0 and type(results[0]) in [list, dict]:
                 print(f'Writing data to {output_file}')
@@ -469,13 +534,18 @@ class _SocketFinXClient(_SyncFinXClient):
         """
         print('Parsing batch input...')
         batch_input_df = (pd.read_csv if type(batch_input) is str else pd.DataFrame)(batch_input)
-        cache_keys = [_get_cache_key({**base_cache_payload, **security_input})
-                      for security_input in batch_input_df.to_dict(orient='records')]
-        batch_input_df['cache_keys'] = cache_keys
-        batch_input_df['cached_responses'] = batch_input_df['cache_keys'].map(self.cache)
+        batch_input_df['cache_keys'] = [
+            self.check_cache(
+                base_cache_payload['api_method'],
+                security_input.get('security_id'),
+                {**base_cache_payload, **security_input})
+            for security_input in batch_input_df.to_dict(orient='records')]
+        batch_input_df['cached_responses'] = batch_input_df['cache_keys'].map(lambda x: x[0])
         cached_responses = batch_input_df.loc[
             batch_input_df['cached_responses'].notnull()]['cached_responses'].tolist()
         outstanding_requests = batch_input_df.loc[batch_input_df['cached_responses'].isnull()]
+        cache_keys = outstanding_requests['cache_keys'].tolist()
+        cached_responses = outstanding_requests['cached_responses'].tolist()
         outstanding_requests.drop(['cache_keys', 'cached_responses'], axis=1, inplace=True)
         return cache_keys, cached_responses, outstanding_requests.to_dict(orient='records')
 
@@ -552,14 +622,15 @@ class _SocketFinXClient(_SyncFinXClient):
                 payload['batch_input'] = outstanding_requests
             payload['api_method'] = 'batch_' + api_method
         else:
-            cache_keys = [_get_cache_key(payload)]
-            cached_response = self.cache.get(cache_keys[0])
-            if cached_response is not None:
+            cache_keys = self.check_cache(
+                api_method, payload.get('security_id'), payload)
+            if cache_keys[0] is not None:
                 print('Request found in cache')
                 if callable(callback):
-                    return callback(cached_response, **kwargs, cache_keys=cache_keys)
-                return cached_response
-        payload['cache_keys'] = cache_keys
+                    return callback(cache_keys[0], **kwargs, cache_keys=cache_keys)
+                return cache_keys[0]
+            cache_keys = [cache_keys]
+        payload['cache_key'] = cache_keys
         self._socket.send(json.dumps(payload))
         blocking = kwargs.get('blocking', self.blocking)
         if blocking:
