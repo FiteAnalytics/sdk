@@ -112,7 +112,7 @@ class _SyncFinXClient:
         cache_key += f'{api_method}'
         params_key = ','.join(
             [f'{key}:{params[key]}' for key in sorted(params.keys())
-             if key not in ['security_id', 'api_method', 'input_file', 'output_file']])
+             if key not in ['security_id', 'api_method', 'input_file', 'output_file', 'block']])
         params_key = params_key if len(params_key) > 0 else 'NONE'
         cached_value = self.cache.get(cache_key)
         if cached_value is None:
@@ -544,6 +544,7 @@ class _SocketFinXClient(_SyncFinXClient):
         cached_responses = batch_input_df.loc[
             batch_input_df['cached_responses'].notnull()]['cached_responses'].tolist()
         outstanding_requests = batch_input_df.loc[batch_input_df['cached_responses'].isnull()]
+        print(batch_input_df)
         cache_keys = outstanding_requests['cache_keys'].tolist()
         cached_responses = outstanding_requests['cached_responses'].tolist()
         outstanding_requests.drop(['cache_keys', 'cached_responses'], axis=1, inplace=True)
