@@ -1,6 +1,6 @@
 #! Python
 """
-Author: Jake Mathai
+Author: Jake Mathai, Dick Mule
 Purpose: Client classes for exposing the FinX API endpoints
 """
 import os
@@ -199,7 +199,7 @@ class _SyncFinXClient:
         """
         return self._dispatch('security_cash_flows', security_id=security_id, **kwargs)
 
-    def get_curve(self, curve_name, currency, start_date, end_date=None):
+    def get_curve(self, curve_name, currency, start_date, end_date=None, **kwargs):
         """
         Yield curve function
 
@@ -213,7 +213,8 @@ class _SyncFinXClient:
             curve_name=curve_name,
             currency=currency,
             start_date=start_date,
-            end_date=end_date if end_date is not None else start_date)
+            end_date=end_date if end_date is not None else start_date,
+            **kwargs)
 
     def _dispatch_batch(self, api_method, security_params, **kwargs):
         """
