@@ -27,42 +27,31 @@ enableTrace(False)
 
 DEFAULT_API_URL = 'https://sandbox.finx.io/api/'
 
-"""
-EXAMPLE OF CACHE:
-CACHE = {
-  # TIER 1 KEYS:
-  API_METHOD_W/OUT_SECURITY_ID_PARAM_1: 
-    LRU(MAX_SIZE_METHOD) -> {PARAMS_1: CACHED_RESULT_1, ..., PARAMS_MAX_SIZE_METHOD: CACHED_RESULT_MAX_SIZE_METHOD},
-  MY_SECURITY_ID:
-    SECURITY_REFERENCE:
-      LRU(3) -> {
-          PARAMS_1: PARAMS_1_REF_DATA,
-          PARAMS_2: PARAMS_2_REF_DATA,
-          PARAMS_3: PARAMS_3_REF_DATA
-        }
-    SECURITY_ANALYTICS:
-      LRU(3) -> {
-          PARAMS_1: PARAMS_1_ANALYTICS,
-          PARAMS_2: PARAMS_2_ANALYTICS,
-          PARAMS_3: PARAMS_3_ANALYTICS
-        }
-    SECURITY_CASH_FLOWS: 
-      LRU(1) -> {
-          LAST_PARAMS: LAST_CF_DATAFRAME
-        }
-}
-
-f = _SyncFinXClient()
-y = f.get_cache_keys('blah', {'security_id': 'hello', 'as_of_date': '20210101'})
-f.recall_cache_value(y)
-
-x = f.get_cache_keys('testme', {})
-f.recall_cache_value(x)
-"""
-
 
 class _BaseSyncClient:
+    """
+    FinX Client base class with LRU caching
 
+    Default LRU cache architecture = LRU(100000) {
+        "{security_id}security_reference": LRU(3) {
+            "{reference_parameters_1}": reference_output_1,
+            "{reference_parameters_2}": reference_output_2,
+            "{reference_parameters_3}": reference_output_3
+        },
+        "{security_id}security_analytics": LRU(3) {
+            "{analytics_parameters_1}": analytics_output_1,
+            "{analytics_parameters_2}": analytics_output_2,
+            "{analytics_parameters_3}": analytics_output_3
+        },
+        "{security_id}security_cash_flows": LRU(1) {
+            "{cash_flows_parameters}": cash_flows_output
+        },
+        ...
+        "list_api_functions": LRU(1) {
+            "NONE": api_functions
+        }
+    }
+    """
     def __init__(self, **kwargs):
         """
         Client constructor - supports keywords finx_api_key and finx_api_endpoint, or
@@ -77,7 +66,11 @@ class _BaseSyncClient:
         self.cache = LRU(self.cache_size)
         self._session = requests.session() if kwargs.get('session', True) else None
         self._executor = ThreadPoolExecutor() if kwargs.get('executor', True) else None
-        self.cache_method_size = dict(security_analytics=3, cash_flows=1, reference_data=3)
+        self.cache_method_size = kwargs.get('cache_method_size') or {
+            'security_reference': 3,
+            'security_analytics': 3,
+            'security_cash_flows': 1
+        }
 
     def close_session(self):
         if self._session is not None:
@@ -497,7 +490,7 @@ class _BaseSocketClient(_BaseSyncClient):
     def _listen_for_results(self, cache_keys, callback=None, **kwargs):
         """
         Process listening for result of a request and optionally executing callback on the result. If blocking == False,
-        specified, runs as an async threadpool process. Else, runs directly and returns the result
+        runs as an async threadpool process
         """
         try:
             results = []
