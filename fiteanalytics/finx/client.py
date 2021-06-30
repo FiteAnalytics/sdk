@@ -4,7 +4,6 @@ Author: Jake Mathai, Dick Mule
 Purpose: Client classes for exposing the FinX API endpoints
 """
 import os
-import copy
 import json
 import asyncio
 import requests
@@ -27,7 +26,6 @@ from concurrent.futures import ThreadPoolExecutor
 enableTrace(False)
 
 DEFAULT_API_URL = 'https://sandbox.finx.io/api/'
-
 
 """
 EXAMPLE OF CACHE:
@@ -63,20 +61,7 @@ f.recall_cache_value(x)
 """
 
 
-# def _get_cache_key(params):
-#     key = ''
-#     security_id = params.get('security_id')
-#     if security_id is not None:
-#         key += security_id + ','
-#     api_method = params.get('api_method')
-#     if api_method is not None:
-#         key += api_method + ','
-#     return key + ','.join(
-#         [f'{key}:{params[key]}' for key in sorted(params.keys())
-#          if key not in ['security_id', 'api_method', 'input_file', 'output_file']])
-
-
-class _SyncFinXClient:
+class _BaseSyncClient:
 
     def __init__(self, **kwargs):
         """
@@ -94,6 +79,10 @@ class _SyncFinXClient:
         self._executor = ThreadPoolExecutor() if kwargs.get('executor', True) else None
         self.cache_method_size = dict(security_analytics=3, cash_flows=1, reference_data=3)
 
+    def close_session(self):
+        if self._session is not None:
+            self._session.close()
+
     def get_api_key(self):
         return self.__api_key
 
@@ -106,14 +95,14 @@ class _SyncFinXClient:
         return None
 
     def check_cache(self, api_method, security_id=None, params=None):
-        params = dict() if params is None else params
-        cache_key = ''
-        cache_key += f'{security_id}' if security_id else ''
-        cache_key += f'{api_method}'
+        if params is None:
+            params = dict()
+        cache_key = f'{security_id or ""}{api_method}'
         params_key = ','.join(
             [f'{key}:{params[key]}' for key in sorted(params.keys())
              if key not in ['security_id', 'api_method', 'input_file', 'output_file', 'block']])
-        params_key = params_key if len(params_key) > 0 else 'NONE'
+        if len(params_key) > 0:
+            params_key = 'NONE'
         cached_value = self.cache.get(cache_key)
         if cached_value is None:
             self.cache[cache_key] = LRU(1) if security_id is None else LRU(self.cache_method_size.get(api_method, 1))
@@ -121,6 +110,14 @@ class _SyncFinXClient:
         else:
             cached_value = cached_value.get(params_key)
         return cached_value, cache_key, params_key
+
+
+class _SyncFinXClient(_BaseSyncClient):
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.__api_key = self.get_api_key()
+        self.__api_url = self.get_api_url()
 
     def _dispatch(self, api_method, **kwargs):
         assert self._session is not None
@@ -213,7 +210,7 @@ class _SyncFinXClient:
             curve_name=curve_name,
             currency=currency,
             start_date=start_date,
-            end_date=end_date if end_date is not None else start_date,
+            end_date=end_date or start_date,
             **kwargs)
 
     def _dispatch_batch(self, api_method, security_params, **kwargs):
@@ -272,6 +269,10 @@ class _AsyncFinXClient(_SyncFinXClient):
         self.__api_key = self.get_api_key()
         self.__api_url = self.get_api_url()
 
+    async def close_session(self):
+        if self._session is not None:
+            await self._session.close()
+
     async def _dispatch(self, api_method, **kwargs):
         """
         Abstract request dispatch function
@@ -289,7 +290,7 @@ class _AsyncFinXClient(_SyncFinXClient):
             })
         if api_method == 'security_analytics':
             request_body['use_kalotay_analytics'] = False
-        cached_response = self.check_cache()
+        cached_response, cache_key, params_key = self.check_cache(api_method, kwargs.get('security_id'), request_body)
         if cached_response is not None:
             print('Request found in cache')
             return cached_response
@@ -299,7 +300,7 @@ class _AsyncFinXClient(_SyncFinXClient):
             if error is not None:
                 print(f'API returned error: {error}')
                 return response
-            self.cache[cache_key] = data
+            self.cache[cache_key][params_key] = data
             return data
 
     async def list_api_functions(self, **kwargs):
@@ -357,9 +358,7 @@ class _AsyncFinXClient(_SyncFinXClient):
         """
         Abstract batch request dispatch function. Issues a request for each input
         """
-        assert api_method != 'list_api_functions' \
-               and type(security_params) is list \
-               and len(security_params) < 100
+        assert api_method != 'list_api_functions' and type(security_params) is list and len(security_params) < 100
         try:
             asyncio.get_event_loop()
         except:
@@ -407,7 +406,7 @@ class _WebSocket(WebSocketApp):
         return self.sock is not None and self.sock.connected
 
 
-class _SocketFinXClient(_SyncFinXClient):
+class _BaseSocketClient(_BaseSyncClient):
 
     def __init__(self, **kwargs):
         """
@@ -417,14 +416,16 @@ class _SocketFinXClient(_SyncFinXClient):
         super().__init__(**kwargs, session=False)
         self.__api_key = super().get_api_key()
         self.__api_url = super().get_api_url()
-        self.ssl = kwargs.get('ssl', False)
+        self.__auth_payload = json.dumps({'finx_api_key': self.__api_key})
+        self.ssl = kwargs.get('ssl', True)
+        self.__ws_url = f'{"wss" if self.ssl else "ws"}://{urlparse(self.__api_url).netloc}/ws/api/'
         self.is_authenticated = False
         self.blocking = kwargs.get('blocking', True)
         self._init_socket()
 
     def authenticate(self):
         print('Authenticating...')
-        self._socket.send(json.dumps({'finx_api_key': self.__api_key}))
+        self._socket.send(self.__auth_payload)
 
     def _run_socket(self, url, on_message, on_error):
         """
@@ -454,6 +455,7 @@ class _SocketFinXClient(_SyncFinXClient):
         def on_message(socket, message):
             try:
                 message = json.loads(message)
+                print(message)
                 if message.get('is_authenticated'):
                     print('Successfully authenticated')
                     self.is_authenticated = True
@@ -473,7 +475,7 @@ class _SocketFinXClient(_SyncFinXClient):
                 return_iterable = type(data) is list and type(data[0]) is dict
                 for key in cache_keys:
                     value = next(
-                        (item for item in data if item.get("security_id") in key[1]),
+                        (item for item in data if item.get('security_id') in key[1]),
                         None) if return_iterable else data
                     self.cache[key[1]][key[2]] = value
             except:
@@ -485,25 +487,27 @@ class _SocketFinXClient(_SyncFinXClient):
             if not socket.is_connected():
                 self._init_socket()
 
-        url = f'{"wss" if self.ssl else "ws"}://{urlparse(self.__api_url).netloc}/ws/api/'
-        print(f'Connecting to {url}')
-        self._run_socket(url, on_message, on_error)
+        print(f'Connecting to {self.__ws_url}')
+        self._run_socket(self.__ws_url, on_message, on_error)
+
+    def close_session(self):
+        if self._socket.is_connected():
+            self._socket.close()
 
     def _listen_for_results(self, cache_keys, callback=None, **kwargs):
         """
-        Async threadpool process listening for result of a request and execute callback upon arrival. Only used
-        if callback specified in a function call
+        Process listening for result of a request and execute callback upon arrival
         """
         try:
-            # results = {}
-            results = []
+            results = {}
             remaining_keys = cache_keys
+            print(remaining_keys)
             while len(remaining_keys) != 0:
-                sleep(0.01)
-                remaining_results = [self.cache.get(key[1], dict()).get(key[2], None) for key in remaining_keys]
-                remaining_keys = [remaining_keys[index] for index, value in enumerate(remaining_results) if value is None]
-                results += [x for x in remaining_results if x is not None]
-            file_results = [value for value in results
+                sleep(.01)
+                cached_responses = {key: self.cache.get(key) for key in remaining_keys}
+                results.update({key: value for key, value in cached_responses.items() if value is not None})
+                remaining_keys = [key for key, value in cached_responses.items() if value is None]
+            file_results = [(key, value) for key, value in results.items()
                             if type(value) is dict and value.get('filename') is not None]
             if any(file_results):
                 print('Downloading results...')
@@ -520,7 +524,7 @@ class _SocketFinXClient(_SyncFinXClient):
                 print('Updating cache with file data...')
                 for key, value in file_cache_results.items():
                     self.cache[key] = value
-            # results = list(results.values())
+            results = list(results.values())
             output_file = kwargs.get('output_file')
             if output_file is not None and len(results) > 0 and type(results[0]) in [list, dict]:
                 print(f'Writing data to {output_file}')
@@ -542,13 +546,14 @@ class _SocketFinXClient(_SyncFinXClient):
                 base_cache_payload['api_method'],
                 security_input.get('security_id'),
                 {**base_cache_payload, **security_input})
-            for security_input in batch_input_df.to_dict(orient='records')]
+            for security_input in batch_input_df.to_dict(orient='records')
+        ]
         batch_input_df['cached_responses'] = batch_input_df['cache_keys'].map(lambda x: x[0])
         cache_keys = batch_input_df['cache_keys'].tolist()
         cached_responses = batch_input_df.loc[
             batch_input_df['cached_responses'].notnull()]['cached_responses'].tolist()
         outstanding_requests = batch_input_df.loc[batch_input_df['cached_responses'].isnull()]
-#         outstanding_requests.drop(['cache_keys', 'cached_responses'], axis=1, inplace=True)
+        #         outstanding_requests.drop(['cache_keys', 'cached_responses'], axis=1, inplace=True)
         return cache_keys, cached_responses, outstanding_requests.to_dict(orient='records')
 
     def _upload_batch_file(self, batch_input):
@@ -624,15 +629,14 @@ class _SocketFinXClient(_SyncFinXClient):
                 payload['batch_input'] = outstanding_requests
             payload['api_method'] = 'batch_' + api_method
         else:
-            cache_keys = self.check_cache(
-                api_method, payload.get('security_id'), payload)
+            cache_keys = self.check_cache(api_method, payload.get('security_id'), payload)
             if cache_keys[0] is not None:
                 print('Request found in cache')
                 if callable(callback):
                     return callback(cache_keys[0], **kwargs, cache_keys=cache_keys)
                 return cache_keys[0]
             cache_keys = [cache_keys]
-        payload['cache_key'] = cache_keys if not isinstance(payload.get('batch_input'), str) else []
+        payload['cache_key'] = cache_keys if not type(payload.get('batch_input')) is not str else []
         self._socket.send(json.dumps(payload))
         blocking = kwargs.get('blocking', self.blocking)
         if blocking:
@@ -669,6 +673,9 @@ class _SocketFinXClient(_SyncFinXClient):
             input_file=input_file,
             output_file=output_file,
             is_batch=True)
+
+
+class _SocketFinXClient(_BaseSocketClient, _SyncFinXClient):
 
     def batch_coverage_check(self, security_params=None, input_file=None, output_file=None, **kwargs):
         """
