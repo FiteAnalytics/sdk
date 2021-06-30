@@ -61,6 +61,13 @@ f.recall_cache_value(x)
 """
 
 
+# def _get_cache_key(params):
+#     return f'{params.get("security_id", "")},{params.get("api_method", "")},' + ','.join([
+#         f'{key}:{params[key]}' for key in sorted(params.keys())
+#         if key not in ['security_id', 'api_method', 'input_file', 'output_file']
+#     ])
+
+
 class _BaseSyncClient:
 
     def __init__(self, **kwargs):
@@ -100,8 +107,8 @@ class _BaseSyncClient:
         cache_key = f'{security_id or ""}{api_method}'
         params_key = ','.join(
             [f'{key}:{params[key]}' for key in sorted(params.keys())
-             if key not in ['security_id', 'api_method', 'input_file', 'output_file', 'block']])
-        if len(params_key) > 0:
+             if key not in ['security_id', 'api_method', 'input_file', 'output_file', 'blocking']])
+        if len(params_key) == 0:
             params_key = 'NONE'
         cached_value = self.cache.get(cache_key)
         if cached_value is None:
@@ -218,9 +225,9 @@ class _SyncFinXClient(_BaseSyncClient):
         Abstract batch request dispatch function. Issues a request for each input
         """
         assert self._executor is not None \
-               and api_method != 'list_api_functions' \
-               and type(security_params) is list \
-               and len(security_params) < 100
+            and api_method != 'list_api_functions' \
+            and type(security_params) is list \
+            and len(security_params) < 100
         tasks = [self._executor.submit(self._dispatch, api_method, **security_param, **kwargs)
                  for security_param in security_params]
         return [task.result() for task in tasks]
@@ -455,7 +462,6 @@ class _BaseSocketClient(_BaseSyncClient):
         def on_message(socket, message):
             try:
                 message = json.loads(message)
-                print(message)
                 if message.get('is_authenticated'):
                     print('Successfully authenticated')
                     self.is_authenticated = True
@@ -472,12 +478,12 @@ class _BaseSocketClient(_BaseSyncClient):
                 cache_keys = message.get('cache_key')
                 if cache_keys is None:
                     return None
-                return_iterable = type(data) is list and type(data[0]) is dict
-                for key in cache_keys:
-                    value = next(
-                        (item for item in data if item.get('security_id') in key[1]),
-                        None) if return_iterable else data
-                    self.cache[key[1]][key[2]] = value
+                if type(data) is list and type(data[0]) is dict:
+                    for key in cache_keys:
+                        self.cache[key[1]][key[2]] = next((item for item in data if item.get('security_id') in key[1]), None)
+                else:
+                    for key in cache_keys:
+                        self.cache[key[1]][key[2]] = data
             except:
                 print(f'Socket on_message error: {format_exc()}')
             return None
@@ -496,18 +502,19 @@ class _BaseSocketClient(_BaseSyncClient):
 
     def _listen_for_results(self, cache_keys, callback=None, **kwargs):
         """
-        Process listening for result of a request and execute callback upon arrival
+        Async threadpool process listening for result of a request and execute callback upon arrival. Only used
+        if callback specified in a function call
         """
         try:
-            results = {}
+            results = []
             remaining_keys = cache_keys
-            print(remaining_keys)
             while len(remaining_keys) != 0:
-                sleep(.01)
-                cached_responses = {key: self.cache.get(key) for key in remaining_keys}
-                results.update({key: value for key, value in cached_responses.items() if value is not None})
-                remaining_keys = [key for key, value in cached_responses.items() if value is None]
-            file_results = [(key, value) for key, value in results.items()
+                sleep(0.01)
+                remaining_results = [self.cache.get(key[1], dict()).get(key[2], None) for key in remaining_keys]
+                remaining_keys = [remaining_keys[index] for index, value in enumerate(remaining_results) if
+                                  value is None]
+                results += [x for x in remaining_results if x is not None]
+            file_results = [value for value in results
                             if type(value) is dict and value.get('filename') is not None]
             if any(file_results):
                 print('Downloading results...')
@@ -515,7 +522,8 @@ class _BaseSocketClient(_BaseSyncClient):
                     requests.get(
                         self.__api_url + 'batch-download/',
                         params={'filename': file_results[0][1].get('filename')}
-                    ).content.decode('utf-8')))
+                    ).content.decode('utf-8')
+                ))
                 file_cache_results = dict(zip(
                     file_df['security_id'].map(
                         lambda x: next((pair[0] for pair in file_results if x in pair[0]), None)),
@@ -524,7 +532,6 @@ class _BaseSocketClient(_BaseSyncClient):
                 print('Updating cache with file data...')
                 for key, value in file_cache_results.items():
                     self.cache[key] = value
-            results = list(results.values())
             output_file = kwargs.get('output_file')
             if output_file is not None and len(results) > 0 and type(results[0]) in [list, dict]:
                 print(f'Writing data to {output_file}')
@@ -545,16 +552,15 @@ class _BaseSocketClient(_BaseSyncClient):
             self.check_cache(
                 base_cache_payload['api_method'],
                 security_input.get('security_id'),
-                {**base_cache_payload, **security_input})
-            for security_input in batch_input_df.to_dict(orient='records')
+                {**base_cache_payload, **security_input}
+            ) for security_input in batch_input_df.to_dict(orient='records')
         ]
-        batch_input_df['cached_responses'] = batch_input_df['cache_keys'].map(lambda x: x[0])
+        batch_input_df['cached_responses'] = batch_input_df['cache_keys'].str[0]
         cache_keys = batch_input_df['cache_keys'].tolist()
         cached_responses = batch_input_df.loc[
             batch_input_df['cached_responses'].notnull()]['cached_responses'].tolist()
-        outstanding_requests = batch_input_df.loc[batch_input_df['cached_responses'].isnull()]
-        #         outstanding_requests.drop(['cache_keys', 'cached_responses'], axis=1, inplace=True)
-        return cache_keys, cached_responses, outstanding_requests.to_dict(orient='records')
+        outstanding_requests = batch_input_df.loc[batch_input_df['cached_responses'].isnull()].to_dict(orient='records')
+        return cache_keys, cached_responses, outstanding_requests
 
     def _upload_batch_file(self, batch_input):
         """
@@ -592,10 +598,10 @@ class _BaseSocketClient(_BaseSyncClient):
             self._init_socket()
         if not self.is_authenticated:
             print('Awaiting authentication...')
-            i = 5000
-            while not self.is_authenticated and i >= 1:
-                sleep(.001)
-                i -= 1
+            for i in range(5000):
+                sleep(0.001)
+                if self.is_authenticated:
+                    break
             if not self.is_authenticated:
                 raise Exception('Client not authenticated')
         payload = {'api_method': api_method}
@@ -636,7 +642,7 @@ class _BaseSocketClient(_BaseSyncClient):
                     return callback(cache_keys[0], **kwargs, cache_keys=cache_keys)
                 return cache_keys[0]
             cache_keys = [cache_keys]
-        payload['cache_key'] = cache_keys if not type(payload.get('batch_input')) is not str else []
+        payload['cache_key'] = cache_keys if type(payload.get('batch_input')) is not str else []
         self._socket.send(json.dumps(payload))
         blocking = kwargs.get('blocking', self.blocking)
         if blocking:

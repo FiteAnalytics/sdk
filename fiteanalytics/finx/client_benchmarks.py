@@ -1,7 +1,6 @@
 """
 client_benchmarks.py
 """
-import time
 import asyncio
 from timeit import timeit
 from asgiref.sync import AsyncToSync
@@ -68,14 +67,6 @@ def socket_client_test():
     keys.append(finx.get_security_cash_flows('9127962F5', as_of_date='2021-03-24'))
     print('\n' + '*'*20 + 'BATCH SECURITY ANALYTICS' + '*'*20 + '\n')
     keys.append(finx.batch_security_analytics(BATCH_INPUTS))
-    # remaining_tasks = {key: finx.cache.get(key) for key in keys}
-    # keys = [key for key, value in remaining_tasks.items() if value is None]
-    # while any(remaining_tasks):
-    #     time.sleep(0.001)
-    #     remaining_tasks = {key: finx.cache.get(key) for key in keys}
-    #     keys = [key for key, value in remaining_tasks.items() if value is None]
-    # if any(remaining_tasks):
-    #     print(f"Didn't get results in time for {len(remaining_tasks.keys())} tasks")
 
 
 timeit(lambda: sync_client_test(), number=1)
