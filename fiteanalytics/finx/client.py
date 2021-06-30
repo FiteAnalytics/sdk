@@ -56,6 +56,16 @@ class _BaseSyncClient:
         """
         Client constructor - supports keywords finx_api_key and finx_api_endpoint, or
         FINX_API_KEY and FINX_API_ENDPOINT environment variables
+        :keyword finx_api_key: string, optional
+        :keyword finx_api_endpoint: string, optional
+        :keyword cache_size: int, maximum number of objects to hold in first layer of LRU cache. Default 100000, optional
+        :keyword cache_method_size: dict, map available method names to maximum allowed objects for each functions's LRU
+                  cache in the second layer of the cache. Default:
+                  {
+                      'security_reference': 3,
+                      'security_analytics': 3,
+                      'security_cash_flows': 1
+                  }
         """
         self.__api_key = kwargs.get('finx_api_key') or os.environ.get('FINX_API_KEY')
         if self.__api_key is None:
@@ -661,8 +671,8 @@ class _BaseSocketClient(_BaseSyncClient):
 
                   If True or not null, uses the generic callback function _batch_callback() defined above.
                   Default None, optional
-        :keyword blocking: bool - block main thread until result arrives and return the value.
-                  Default is object's configured default, optional
+        :keyword blocking: bool - block main thread until result arrives and return the value. Default is object's
+                  configured default, optional
         """
         batch_input = security_params or input_file
         assert batch_method != 'list_api_functions' and batch_input is not None
