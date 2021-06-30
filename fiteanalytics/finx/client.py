@@ -28,7 +28,7 @@ enableTrace(False)
 DEFAULT_API_URL = 'https://sandbox.finx.io/api/'
 
 
-class _BaseSyncClient:
+class _BaseClient:
     """
     Client base class with LRU caching
 
@@ -113,7 +113,7 @@ class _BaseSyncClient:
         return cached_value, cache_key, params_key
 
 
-class _SyncFinXClient(_BaseSyncClient):
+class _SyncFinXClient(_BaseClient):
     """
     FinX synchronous HTTP client
     """
@@ -411,7 +411,7 @@ class _WebSocket(WebSocketApp):
         return self.sock is not None and self.sock.connected
 
 
-class _BaseSocketClient(_BaseSyncClient):
+class _BaseSocketClient(_BaseClient):
     """
     Websocket client base class
     """
