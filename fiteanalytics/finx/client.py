@@ -73,11 +73,11 @@ class _BaseClient:
         self.cache = LRU(self.cache_size)
         self._session = requests.session() if kwargs.get('session', True) else None
         self._executor = ThreadPoolExecutor() if kwargs.get('executor', True) else None
-        self.cache_method_size = kwargs.get('cache_method_size') or {
+        self.cache_method_size = kwargs.get('cache_method_size', {
             'security_reference': 3,
             'security_analytics': 3,
             'security_cash_flows': 1
-        }
+        })
 
     def close_session(self):
         if self._session is not None:
