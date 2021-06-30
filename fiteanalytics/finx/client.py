@@ -30,7 +30,7 @@ DEFAULT_API_URL = 'https://sandbox.finx.io/api/'
 
 class _BaseSyncClient:
     """
-    FinX Client base class with LRU caching
+    Client base class with LRU caching
 
     Default LRU cache architecture = LRU(100000) {
         "{security_id}security_reference": LRU(3) {
@@ -107,7 +107,9 @@ class _BaseSyncClient:
 
 
 class _SyncFinXClient(_BaseSyncClient):
-
+    """
+    FinX synchronous HTTP client
+    """
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.__api_key = self.get_api_key()
@@ -253,7 +255,9 @@ class _SyncFinXClient(_BaseSyncClient):
 
 
 class _AsyncFinXClient(_SyncFinXClient):
-
+    """
+    FinX asynchronous HTTP client
+    """
     def __init__(self, **kwargs):
         """
         Client constructor - supports keywords finx_api_key and finx_api_endpoint,
@@ -401,7 +405,9 @@ class _WebSocket(WebSocketApp):
 
 
 class _BaseSocketClient(_BaseSyncClient):
-
+    """
+    Websocket client base class
+    """
     def __init__(self, **kwargs):
         """
         Client constructor - supports keywords finx_api_key and finx_api_endpoint,
@@ -670,7 +676,9 @@ class _BaseSocketClient(_BaseSyncClient):
 
 
 class _SocketFinXClient(_BaseSocketClient, _SyncFinXClient):
-
+    """
+    FinX websocket client
+    """
     def batch_coverage_check(self, security_params=None, input_file=None, output_file=None, **kwargs):
         """
         Check coverage for batch of securities
