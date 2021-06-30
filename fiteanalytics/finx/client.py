@@ -61,13 +61,6 @@ f.recall_cache_value(x)
 """
 
 
-# def _get_cache_key(params):
-#     return f'{params.get("security_id", "")},{params.get("api_method", "")},' + ','.join([
-#         f'{key}:{params[key]}' for key in sorted(params.keys())
-#         if key not in ['security_id', 'api_method', 'input_file', 'output_file']
-#     ])
-
-
 class _BaseSyncClient:
 
     def __init__(self, **kwargs):
@@ -105,9 +98,10 @@ class _BaseSyncClient:
         if params is None:
             params = dict()
         cache_key = f'{security_id or ""}{api_method}'
-        params_key = ','.join(
-            [f'{key}:{params[key]}' for key in sorted(params.keys())
-             if key not in ['security_id', 'api_method', 'input_file', 'output_file', 'blocking']])
+        params_key = ','.join([
+            f'{key}:{params[key]}' for key in sorted(params.keys())
+            if key not in ['security_id', 'api_method', 'input_file', 'output_file', 'blocking']
+        ])
         if len(params_key) == 0:
             params_key = 'NONE'
         cached_value = self.cache.get(cache_key)
@@ -210,7 +204,7 @@ class _SyncFinXClient(_BaseSyncClient):
        :param curve_name: string
        :param currency: string
        :param start_date: string as YYYY-MM-DD
-       :keyword end_date: string as YYYY-MM-DD. Default None, optional
+       :param end_date: string as YYYY-MM-DD. Default None, optional
        """
         return self._dispatch(
             'get_curve',
@@ -421,11 +415,10 @@ class _BaseSocketClient(_BaseSyncClient):
         or FINX_API_KEY and FINX_API_ENDPOINT environment variables
         """
         super().__init__(**kwargs, session=False)
-        self.__api_key = super().get_api_key()
-        self.__api_url = super().get_api_url()
+        self.__api_key = self.get_api_key()
+        self.__api_url = self.get_api_url()
         self.__auth_payload = json.dumps({'finx_api_key': self.__api_key})
-        self.ssl = kwargs.get('ssl', True)
-        self.__ws_url = f'{"wss" if self.ssl else "ws"}://{urlparse(self.__api_url).netloc}/ws/api/'
+        self.__ws_url = f'{"wss" if kwargs.get("ssl", True) else "ws"}://{urlparse(self.__api_url).netloc}/ws/api/'
         self.is_authenticated = False
         self.blocking = kwargs.get('blocking', True)
         self._init_socket()
@@ -480,7 +473,8 @@ class _BaseSocketClient(_BaseSyncClient):
                     return None
                 if type(data) is list and type(data[0]) is dict:
                     for key in cache_keys:
-                        self.cache[key[1]][key[2]] = next((item for item in data if item.get('security_id') in key[1]), None)
+                        self.cache[key[1]][key[2]] = next(
+                            (item for item in data if item.get('security_id') in key[1]), None)
                 else:
                     for key in cache_keys:
                         self.cache[key[1]][key[2]] = data
@@ -502,8 +496,8 @@ class _BaseSocketClient(_BaseSyncClient):
 
     def _listen_for_results(self, cache_keys, callback=None, **kwargs):
         """
-        Async threadpool process listening for result of a request and execute callback upon arrival. Only used
-        if callback specified in a function call
+        Process listening for result of a request and optionally executing callback on the result. If blocking == False,
+        specified, runs as an async threadpool process. Else, runs directly and returns the result
         """
         try:
             results = []
@@ -520,7 +514,7 @@ class _BaseSocketClient(_BaseSyncClient):
                 print('Downloading results...')
                 file_df = pd.read_csv(StringIO(
                     requests.get(
-                        self.__api_url + 'batch-download/',
+                        f'{self.__api_url}batch-download/',
                         params={'filename': file_results[0][1].get('filename')}
                     ).content.decode('utf-8')
                 ))
@@ -578,7 +572,7 @@ class _BaseSocketClient(_BaseSyncClient):
                     file.write('\n'.join(batch_input))
         file = open(filename, 'rb')
         response = requests.post(  # Upload file to server and record filename
-            self.__api_url + 'batch-upload/',
+            f'{self.__api_url}batch-upload/',
             data={'finx_api_key': self.__api_key},
             files={'file': file}).json()
         print(response)
@@ -633,7 +627,7 @@ class _BaseSocketClient(_BaseSyncClient):
                 payload['batch_input'] = self._upload_batch_file(outstanding_requests)
             else:
                 payload['batch_input'] = outstanding_requests
-            payload['api_method'] = 'batch_' + api_method
+            payload['api_method'] = f'batch_{api_method}'
         else:
             cache_keys = self.check_cache(api_method, payload.get('security_id'), payload)
             if cache_keys[0] is not None:
@@ -671,10 +665,11 @@ class _BaseSocketClient(_BaseSyncClient):
         :keyword blocking: bool - block main thread until result arrives and return the value.
                   Default is object's configured default, optional
         """
-        assert batch_method != 'list_api_functions' and (security_params or input_file)
+        batch_input = security_params or input_file
+        assert batch_method != 'list_api_functions' and batch_input is not None
         return self._dispatch(
             batch_method,
-            batch_input=security_params or input_file,
+            batch_input=batch_input,
             **kwargs,
             input_file=input_file,
             output_file=output_file,
@@ -711,7 +706,6 @@ class _SocketFinXClient(_BaseSocketClient, _SyncFinXClient):
 def FinXClient(kind='sync', **kwargs):
     """
     Unified interface to spawn FinX client. Use keyword "kind" to specify the type of client
-
     :param kind: string - 'socket' for websocket client, 'async' for async client. Default 'sync', optional
     """
     if kind == 'socket':
