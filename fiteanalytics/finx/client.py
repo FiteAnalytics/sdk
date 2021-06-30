@@ -56,16 +56,13 @@ class _BaseSyncClient:
         """
         Client constructor - supports keywords finx_api_key and finx_api_endpoint, or
         FINX_API_KEY and FINX_API_ENDPOINT environment variables
+
         :keyword finx_api_key: string, optional
         :keyword finx_api_endpoint: string, optional
         :keyword cache_size: int, maximum number of objects to hold in first layer of LRU cache. Default 100000, optional
         :keyword cache_method_size: dict, map available method names to maximum allowed objects for each functions's LRU
                   cache in the second layer of the cache. Default:
-                  {
-                      'security_reference': 3,
-                      'security_analytics': 3,
-                      'security_cash_flows': 1
-                  }
+                  {'security_reference': 3, 'security_analytics': 3, 'security_cash_flows': 1}, optional
         """
         self.__api_key = kwargs.get('finx_api_key') or os.environ.get('FINX_API_KEY')
         if self.__api_key is None:
