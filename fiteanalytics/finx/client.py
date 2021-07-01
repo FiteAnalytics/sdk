@@ -33,17 +33,17 @@ class _BaseClient:
     Client base class with LRU caching
 
     Default LRU cache architecture = LRU(100000) {
-        "{security_id}security_reference": LRU(3) {
+        "{security_id}:security_reference": LRU(3) {
             "{reference_parameters_1}": reference_output_1,
             "{reference_parameters_2}": reference_output_2,
             "{reference_parameters_3}": reference_output_3
         },
-        "{security_id}security_analytics": LRU(3) {
+        "{security_id}:security_analytics": LRU(3) {
             "{analytics_parameters_1}": analytics_output_1,
             "{analytics_parameters_2}": analytics_output_2,
             "{analytics_parameters_3}": analytics_output_3
         },
-        "{security_id}security_cash_flows": LRU(1) {
+        "{security_id}:security_cash_flows": LRU(1) {
             "{cash_flows_parameters}": cash_flows_output
         },
         ...
@@ -64,20 +64,22 @@ class _BaseClient:
                   cache in the second layer of the cache. Default:
                   {'security_reference': 3, 'security_analytics': 3, 'security_cash_flows': 1}, optional
         """
-        self.__api_key = kwargs.get('finx_api_key') or os.environ.get('FINX_API_KEY')
+        self.__api_key = kwargs.get('finx_api_key', os.environ.get('FINX_API_KEY'))
         if self.__api_key is None:
-            raise Exception('API key not found - please include the keyword argument '
-                            'finx_api_key or set the environment variable FINX_API_KEY')
-        self.__api_url = kwargs.get('finx_api_endpoint') or os.environ.get('FINX_API_ENDPOINT') or DEFAULT_API_URL
-        self.cache_size = kwargs.get('cache_size') or 100000
-        self.cache = LRU(self.cache_size)
-        self._session = requests.session() if kwargs.get('session', True) else None
-        self._executor = ThreadPoolExecutor() if kwargs.get('executor', True) else None
-        self.cache_method_size = kwargs.get('cache_method_size', {
-            'security_reference': 3,
-            'security_analytics': 3,
-            'security_cash_flows': 1
-        })
+            raise Exception(
+                'API key not found - please set the keyword argument finx_api_key '
+                'or the environment variable FINX_API_KEY')
+        self.__api_url = kwargs.get('finx_api_endpoint', os.environ.get('FINX_API_ENDPOINT', DEFAULT_API_URL))
+        self.cache = LRU(kwargs.get('cache_size', 100000))
+        self._session = (kwargs.get('session', True) and requests.session()) or None
+        self._executor = (kwargs.get('executor', True) and ThreadPoolExecutor()) or None
+        self.cache_method_size = kwargs.get(
+            'cache_method_size', {
+                'security_reference': 3,
+                'security_analytics': 3,
+                'security_cash_flows': 1
+            }
+        )
 
     def close_session(self):
         if self._session is not None:
@@ -97,7 +99,7 @@ class _BaseClient:
     def check_cache(self, api_method, security_id=None, params=None):
         if params is None:
             params = dict()
-        cache_key = f'{security_id or ""}{api_method}'
+        cache_key = f'{(security_id and f"{security_id}:") or ""}{api_method}'
         params_key = ','.join([
             f'{key}:{params[key]}' for key in sorted(params.keys())
             if key not in ['security_id', 'api_method', 'input_file', 'output_file', 'blocking']
@@ -106,7 +108,7 @@ class _BaseClient:
             params_key = 'NONE'
         cached_value = self.cache.get(cache_key)
         if cached_value is None:
-            self.cache[cache_key] = LRU(1) if security_id is None else LRU(self.cache_method_size.get(api_method, 1))
+            self.cache[cache_key] = (security_id and LRU(1)) or LRU(self.cache_method_size.get(api_method, 1))
             self.cache[cache_key][params_key] = None
         else:
             cached_value = cached_value.get(params_key)
@@ -424,7 +426,7 @@ class _BaseSocketClient(_BaseClient):
         self.__api_key = self.get_api_key()
         self.__api_url = self.get_api_url()
         self.__auth_payload = json.dumps({'finx_api_key': self.__api_key})
-        self.__ws_url = f'{"wss" if kwargs.get("ssl", True) else "ws"}://{urlparse(self.__api_url).netloc}/ws/api/'
+        self.__ws_url = f'ws{(kwargs.get("ssl", True) and "s") or ""}://{urlparse(self.__api_url).netloc}/ws/api/'
         self.is_authenticated = False
         self.blocking = kwargs.get('blocking', True)
         self._init_socket()
@@ -480,7 +482,9 @@ class _BaseSocketClient(_BaseClient):
                 if type(data) is list and type(data[0]) is dict:
                     for key in cache_keys:
                         self.cache[key[1]][key[2]] = next(
-                            (item for item in data if item.get('security_id') in key[1]), None)
+                            (item for item in data if item.get('security_id') in key[1]),
+                            None
+                        )
                 else:
                     for key in cache_keys:
                         self.cache[key[1]][key[2]] = data
@@ -511,11 +515,12 @@ class _BaseSocketClient(_BaseClient):
             while len(remaining_keys) != 0:
                 sleep(0.01)
                 remaining_results = [self.cache.get(key[1], dict()).get(key[2], None) for key in remaining_keys]
-                remaining_keys = [remaining_keys[index] for index, value in enumerate(remaining_results) if
-                                  value is None]
-                results += [x for x in remaining_results if x is not None]
-            file_results = [value for value in results
-                            if type(value) is dict and value.get('filename') is not None]
+                remaining_keys = [
+                    remaining_keys[index] for index, value in enumerate(remaining_results)
+                    if value is None
+                ]
+                results += [result for result in remaining_results if result is not None]
+            file_results = [value for value in results if type(value) is dict and value.get('filename') is not None]
             if any(file_results):
                 print('Downloading results...')
                 file_df = pd.read_csv(StringIO(
@@ -526,7 +531,10 @@ class _BaseSocketClient(_BaseClient):
                 ))
                 file_cache_results = dict(zip(
                     file_df['security_id'].map(
-                        lambda x: next((pair[0] for pair in file_results if x in pair[0]), None)),
+                        lambda security_id: next(
+                            (pair[0] for pair in file_results if security_id in pair[0]),
+                            None
+                        )),
                     file_df.to_dict(orient='records')))
                 results.update(file_cache_results)
                 print('Updating cache with file data...')
