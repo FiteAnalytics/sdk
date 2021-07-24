@@ -649,12 +649,16 @@ class _SocketFinXClient(_SyncFinXClient):
             base_cache_payload['api_method'] = api_method
             if 'security_analytics' in api_method:
                 base_cache_payload['use_kalotay_analytics'] = False
-            cache_keys, cached_responses, outstanding_requests = self._parse_batch_input(
-                batch_input,
-                base_cache_payload)
+            if not chunk_payload:
+                cache_keys, cached_responses, outstanding_requests = self._parse_batch_input(
+                    batch_input,
+                    base_cache_payload)
+            else:
+                cache_keys, cached_responses, outstanding_requests =\
+                    [self.check_cache(api_method, payload.get('security_id'), payload)], [], [payload]
             total_requests = len(cached_responses) + len(outstanding_requests)
-            print(f'total requests = {total_requests}')
-            if len(cached_responses) == total_requests and total_requests > 0:
+            print(f'total requests = {total_requests}, cache_keys = {cache_keys}')
+            if len(cached_responses) == total_requests:
                 print(f'All {total_requests} requests found in cache')
                 if callable(callback):
                     return callback(cached_responses, **kwargs, cache_keys=cache_keys)
