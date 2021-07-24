@@ -679,7 +679,7 @@ class _SocketFinXClient(_SyncFinXClient):
                     return callback(cache_keys[0], **kwargs, cache_keys=cache_keys)
                 return cache_keys[0]
             cache_keys = [cache_keys]
-        payload['cache_key'] = cache_keys if not isinstance(payload.get('batch_input'), str) else []
+        payload['cache_key'] = cache_keys if not isinstance(payload.get('batch_input'), str) or chunk_payload else []
         self._socket.send(json.dumps(payload))
         blocking = kwargs.get('blocking', self.blocking)
         print(f'BLOCKING = {blocking}')
