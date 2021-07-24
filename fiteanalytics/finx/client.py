@@ -588,13 +588,11 @@ class _SocketFinXClient(_SyncFinXClient):
             batch_input.to_csv(filename, index=False)
         elif type(batch_input) is list:
             if type(batch_input[0]) in [dict, list]:
-                if type(batch_input[0]) == dict:
-                    repr_dict = any([type(v) == dict for v in batch_input[0].values()])
-                else:
-                    repr_dict = False
-                if repr_dict:
+                request_dicts = [x.get("request") for x in batch_input if type(x) == dict]
+                request_dicts = [x for x in request_dicts if x]
+                if request_dicts:
                     with open(filename, 'w+') as file:
-                        file.write('\n'.join(batch_input))
+                        file.write('\n'.join(request_dicts))
                     file.close()
                     print("MADE BATCH FILE")
                 else:
@@ -603,7 +601,6 @@ class _SocketFinXClient(_SyncFinXClient):
                 with open(filename, 'w+') as file:
                     file.write('\n'.join(batch_input))
         file = open(filename, 'rb')
-        print(f'posting to {self.__api_url + "batch-upload/"}')
         response = requests.post(  # Upload file to server and record filename
             self.__api_url + 'batch-upload/',
             data={'finx_api_key': self.__api_key, 'filename': filename},
