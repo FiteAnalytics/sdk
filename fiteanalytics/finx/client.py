@@ -426,6 +426,26 @@ class _SocketFinXClient(_SyncFinXClient):
         print('Authenticating...')
         self._socket.send(json.dumps({'finx_api_key': self.__api_key}))
 
+    def _get_size(self, obj, seen=None):
+        """Recursively finds size of objects"""
+        size = getsizeof(obj)
+        if seen is None:
+            seen = set()
+        obj_id = id(obj)
+        if obj_id in seen:
+            return 0
+        # Important mark as seen *before* entering recursion to gracefully handle
+        # self-referential objects
+        seen.add(obj_id)
+        if isinstance(obj, dict):
+            size += sum([self._get_size(v, seen) for v in obj.values()])
+            size += sum([self._get_size(k, seen) for k in obj.keys()])
+        elif hasattr(obj, '__dict__'):
+            size += self._get_size(obj.__dict__, seen)
+        elif hasattr(obj, '__iter__') and not isinstance(obj, (str, bytes, bytearray)):
+            size += sum([self._get_size(i, seen) for i in obj])
+        return size
+
     def _run_socket(self, url, on_message, on_error):
         """
         Spawn websocket connection in daemon thread
@@ -495,7 +515,6 @@ class _SocketFinXClient(_SyncFinXClient):
         if callback specified in a function call
         """
         try:
-            # results = {}
             results = []
             remaining_keys = cache_keys
             while len(remaining_keys) != 0:
@@ -507,20 +526,28 @@ class _SocketFinXClient(_SyncFinXClient):
                             if type(value) is dict and value.get('filename') is not None]
             if any(file_results):
                 print('Downloading results...')
-                file_df = pd.read_csv(StringIO(
+                all_files_results = [pd.read_csv(StringIO(
                     requests.get(
                         self.__api_url + 'batch-download/',
-                        params={'filename': file_results[0][1].get('filename')}
-                    ).content.decode('utf-8')))
-                file_cache_results = dict(zip(
-                    file_df['security_id'].map(
-                        lambda x: next((pair[0] for pair in file_results if x in pair[0]), None)),
-                    file_df.to_dict(orient='records')))
-                results.update(file_cache_results)
-                print('Updating cache with file data...')
-                for key, value in file_cache_results.items():
-                    self.cache[key] = value
-            # results = list(results.values())
+                        params={'filename': file_result['filename']}).content.decode('utf-8')
+                    )) if file_result.get('filename') else None for file_result in file_results]
+                print(len(cache_keys))
+                for index, file_df in enumerate(all_files_results):
+                    if file_df is None:
+                        continue
+                    if 'security_id' in file_df:
+                        file_cache_results = dict(zip(
+                            file_df['security_id'].map(
+                                lambda x: next((pair[0] for pair in file_results if x in pair[0]), None)),
+                            file_df.to_dict(orient='records')))
+                    else:
+                        self.cache[cache_keys[index][1]][cache_keys[index][2]] = file_df
+                        file_cache_results = {}
+                    results[index] = file_df
+                    print('Updating cache with file data...')
+                    for key, value in file_cache_results.items():
+                        print(f'setting file cache results[{key}] w value {value}')
+                        self.cache[key] = value
             output_file = kwargs.get('output_file')
             if output_file is not None and len(results) > 0 and type(results[0]) in [list, dict]:
                 print(f'Writing data to {output_file}')
@@ -561,22 +588,36 @@ class _SocketFinXClient(_SyncFinXClient):
             batch_input.to_csv(filename, index=False)
         elif type(batch_input) is list:
             if type(batch_input[0]) in [dict, list]:
-                pd.DataFrame(batch_input).to_csv(filename, index=False)
+                if type(batch_input[0]) == dict:
+                    repr_dict = any([type(v) == dict for v in batch_input[0].values()])
+                else:
+                    repr_dict = False
+                if repr_dict:
+                    with open(filename, 'w+') as file:
+                        file.write('\n'.join(batch_input))
+                    file.close()
+                    print("MADE BATCH FILE")
+                else:
+                    pd.DataFrame(batch_input).to_csv(filename, index=False)
             elif type(batch_input[0]) is str:
                 with open(filename, 'w+') as file:
                     file.write('\n'.join(batch_input))
         file = open(filename, 'rb')
+        print(f'posting to {self.__api_url + "batch-upload/"}')
         response = requests.post(  # Upload file to server and record filename
             self.__api_url + 'batch-upload/',
-            data={'finx_api_key': self.__api_key},
-            files={'file': file}).json()
-        print(response)
+            data={'finx_api_key': self.__api_key, 'filename': filename},
+            files={'file': file})
+        try:
+            response = response.json()
+        except:
+            response = dict(failed=response.text)
         file.close()
         os.remove(filename)
-        if response['failed']:
+        if response.get('failed'):
             raise Exception(f'Failed to upload file: {response["message"]}')
         print('Batch file uploaded')
-        return response['filename']
+        return response.get('filename', filename)
 
     def _dispatch(self, api_method, **kwargs):
         """
@@ -602,8 +643,11 @@ class _SocketFinXClient(_SyncFinXClient):
             })
         if 'security_analytics' in api_method:
             payload['use_kalotay_analytics'] = False
-        if kwargs.pop('is_batch', False):
-            batch_input = kwargs.pop('batch_input')
+        payload_size = self._get_size(payload)
+        chunk_payload = payload_size > 1e5
+        # print(f"payload size {payload_size}, need to chunk payload: {chunk_payload}")
+        if kwargs.pop('is_batch', False) or chunk_payload:
+            batch_input = kwargs.pop('batch_input', None)
             base_cache_payload = kwargs.copy()
             base_cache_payload['api_method'] = api_method
             if 'security_analytics' in api_method:
@@ -612,17 +656,19 @@ class _SocketFinXClient(_SyncFinXClient):
                 batch_input,
                 base_cache_payload)
             total_requests = len(cached_responses) + len(outstanding_requests)
-            if len(cached_responses) == total_requests:
+            print(f'total requests = {total_requests}')
+            if len(cached_responses) == total_requests and total_requests > 0:
                 print(f'All {total_requests} requests found in cache')
                 if callable(callback):
                     return callback(cached_responses, **kwargs, cache_keys=cache_keys)
                 return cached_responses
             print(f'{len(cached_responses)} out of {total_requests} requests found in cache')
-            if getsizeof(outstanding_requests) > 1e6:
-                payload['batch_input'] = self._upload_batch_file(outstanding_requests)
+            if chunk_payload:
+                payload['batch_input'] = self._upload_batch_file(outstanding_requests if batch_input else [payload])
             else:
                 payload['batch_input'] = outstanding_requests
             payload['api_method'] = 'batch_' + api_method
+            payload = {k: v for k, v in payload.items() if k in ['batch_input', 'api_method']}
         else:
             cache_keys = self.check_cache(
                 api_method, payload.get('security_id'), payload)
@@ -635,6 +681,7 @@ class _SocketFinXClient(_SyncFinXClient):
         payload['cache_key'] = cache_keys if not isinstance(payload.get('batch_input'), str) else []
         self._socket.send(json.dumps(payload))
         blocking = kwargs.get('blocking', self.blocking)
+        print(f'BLOCKING = {blocking}')
         if blocking:
             return self._listen_for_results(cache_keys, callback, **kwargs)
         if callable(callback):
