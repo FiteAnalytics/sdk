@@ -657,7 +657,7 @@ class _SocketFinXClient(_SyncFinXClient):
                 cache_keys, cached_responses, outstanding_requests =\
                     [self.check_cache(api_method, payload.get('security_id'), payload)], [], [payload]
             total_requests = len(cached_responses) + len(outstanding_requests)
-            print(f'total requests = {total_requests}, cache_keys = {cache_keys}')
+            print(f'total requests = {total_requests}')
             if len(cached_responses) == total_requests:
                 print(f'All {total_requests} requests found in cache')
                 if callable(callback):
