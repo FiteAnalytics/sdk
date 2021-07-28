@@ -489,15 +489,12 @@ class _SocketFinXClient(_SyncFinXClient):
                     return None
                 cache_keys = message.get('cache_key')
                 if cache_keys is None:
-                    print('No Cache keys in message: ', message)
                     return None
                 return_iterable = type(data) is list and type(data[0]) is dict
-                print(cache_keys)
                 for key in cache_keys:
                     value = next(
                         (item for item in data if item.get("security_id") in key[1]),
                         None) if return_iterable else data
-                    print('setting cache key: ', key, value)
                     self.cache[key[1]][key[2]] = value
             except:
                 print(f'Socket on_message error: {format_exc()}')
@@ -534,7 +531,6 @@ class _SocketFinXClient(_SyncFinXClient):
                         self.__api_url + 'batch-download/',
                         params={'filename': file_result['filename']}).content.decode('utf-8')
                     )) if file_result.get('filename') else None for file_result in file_results]
-                print(len(cache_keys))
                 for index, file_df in enumerate(all_files_results):
                     if file_df is None:
                         continue
