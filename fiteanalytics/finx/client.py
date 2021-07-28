@@ -489,12 +489,15 @@ class _SocketFinXClient(_SyncFinXClient):
                     return None
                 cache_keys = message.get('cache_key')
                 if cache_keys is None:
+                    print('No Cache keys in message: ', message)
                     return None
                 return_iterable = type(data) is list and type(data[0]) is dict
+                print(cache_keys)
                 for key in cache_keys:
                     value = next(
                         (item for item in data if item.get("security_id") in key[1]),
                         None) if return_iterable else data
+                    print('setting cache key: ', key, value)
                     self.cache[key[1]][key[2]] = value
             except:
                 print(f'Socket on_message error: {format_exc()}')
@@ -656,6 +659,7 @@ class _SocketFinXClient(_SyncFinXClient):
             else:
                 cache_keys, cached_responses, outstanding_requests =\
                     [self.check_cache(api_method, payload.get('security_id'), payload)], [], [payload]
+                cache_keys[0] = list(cache_keys[0])[:-1] + ["None"]
             total_requests = len(cached_responses) + len(outstanding_requests)
             print(f'total requests = {total_requests}')
             if len(cached_responses) == total_requests:
@@ -679,7 +683,8 @@ class _SocketFinXClient(_SyncFinXClient):
                     return callback(cache_keys[0], **kwargs, cache_keys=cache_keys)
                 return cache_keys[0]
             cache_keys = [cache_keys]
-        payload['cache_key'] = cache_keys if not isinstance(payload.get('batch_input'), str) or chunk_payload else []
+        print(cache_keys)
+        payload['cache_key'] = cache_keys# if not isinstance(payload.get('batch_input'), str) else []
         self._socket.send(json.dumps(payload))
         blocking = kwargs.get('blocking', self.blocking)
         print(f'BLOCKING = {blocking}')
