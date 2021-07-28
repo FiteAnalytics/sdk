@@ -509,6 +509,16 @@ class _SocketFinXClient(_SyncFinXClient):
         print(f'Connecting to {url}')
         self._run_socket(url, on_message, on_error)
 
+    def _download_file(self, file_result):
+        response = requests.get(
+            self.__api_url + 'batch-download/',
+            params={'filename': file_result['filename']}).content.decode('utf-8')
+        if file_result.get('is_json'):
+            response = json.loads(response)
+        else:
+            response = pd.read_csv(StringIO(response))
+        return response
+
     def _listen_for_results(self, cache_keys, callback=None, **kwargs):
         """
         Async threadpool process listening for result of a request and execute callback upon arrival. Only used
@@ -526,11 +536,9 @@ class _SocketFinXClient(_SyncFinXClient):
                             if type(value) is dict and value.get('filename') is not None]
             if any(file_results):
                 print('Downloading results...')
-                all_files_results = [pd.read_csv(StringIO(
-                    requests.get(
-                        self.__api_url + 'batch-download/',
-                        params={'filename': file_result['filename']}).content.decode('utf-8')
-                    )) if file_result.get('filename') else None for file_result in file_results]
+                all_files_results = [
+                    self._download_file(file_result) if file_result.get('filename') else None
+                    for file_result in file_results]
                 for index, file_df in enumerate(all_files_results):
                     if file_df is None:
                         continue
@@ -682,7 +690,6 @@ class _SocketFinXClient(_SyncFinXClient):
         payload['cache_key'] = cache_keys# if not isinstance(payload.get('batch_input'), str) else []
         self._socket.send(json.dumps(payload))
         blocking = kwargs.get('blocking', self.blocking)
-        print(f'BLOCKING = {blocking}')
         if blocking:
             return self._listen_for_results(cache_keys, callback, **kwargs)
         if callable(callback):
