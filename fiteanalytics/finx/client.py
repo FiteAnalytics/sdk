@@ -84,6 +84,7 @@ class _BaseClient:
     def close_session(self):
         if self._session is not None:
             self._session.close()
+        return None
 
     def get_api_key(self):
         return self.__api_key
