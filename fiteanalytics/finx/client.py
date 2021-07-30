@@ -72,7 +72,7 @@ class _BaseClient:
         self.__api_url = kwargs.get('finx_api_endpoint', os.environ.get('FINX_API_ENDPOINT', DEFAULT_API_URL))
         self.cache = LRU(kwargs.get('cache_size', 100000))
         self._session = (kwargs.get('session', True) and requests.session()) or None
-        self._executor = (kwargs.get('executor', True) and ThreadPoolExecutor()) or None
+        self._executor = ThreadPoolExecutor() if kwargs.get('executor', True) else None
         self.cache_method_size = kwargs.get(
             'cache_method_size', {
                 'security_reference': 3,
@@ -99,7 +99,7 @@ class _BaseClient:
     def check_cache(self, api_method, security_id=None, params=None):
         if params is None:
             params = dict()
-        cache_key = f'{(security_id and f"{security_id}:") or ""}{api_method}'
+        cache_key = f'{f"{security_id}:" if security_id else ""}{api_method}'
         params_key = ','.join([
             f'{key}:{params[key]}' for key in sorted(params.keys())
             if key not in ['security_id', 'api_method', 'input_file', 'output_file', 'blocking']
@@ -108,7 +108,7 @@ class _BaseClient:
             params_key = 'NONE'
         cached_value = self.cache.get(cache_key)
         if cached_value is None:
-            self.cache[cache_key] = (security_id and LRU(1)) or LRU(self.cache_method_size.get(api_method, 1))
+            self.cache[cache_key] = LRU(1) if security_id else LRU(self.cache_method_size.get(api_method, 1))
             self.cache[cache_key][params_key] = None
         else:
             cached_value = cached_value.get(params_key)
@@ -142,7 +142,9 @@ class _SyncFinXClient(_BaseClient):
             print('Found in cache')
             return cached_response
         request_body['finx_api_key'] = self.__api_key
-        data = self._session.post(self.__api_url, data=request_body).json()
+        data = self._session.post(
+            self.__api_url,
+            data=request_body).json()
         error = data.get('error')
         if error is not None:
             print(f'API returned error: {error}')
@@ -162,7 +164,10 @@ class _SyncFinXClient(_BaseClient):
 
         :param security_id: string - ID of security of interest
         """
-        return self._dispatch('coverage_check', security_id=security_id, **kwargs)
+        return self._dispatch(
+            'coverage_check',
+            security_id=security_id,
+            **kwargs)
 
     def get_security_reference_data(self, security_id, **kwargs):
         """
@@ -171,7 +176,10 @@ class _SyncFinXClient(_BaseClient):
         :param security_id: string
         :keyword as_of_date: string as YYYY-MM-DD. Default None, optional
         """
-        return self._dispatch('security_reference', security_id=security_id, **kwargs)
+        return self._dispatch(
+            'security_reference',
+            security_id=security_id,
+            **kwargs)
 
     def get_security_analytics(self, security_id, **kwargs):
         """
@@ -188,7 +196,10 @@ class _SyncFinXClient(_BaseClient):
         :keyword cap_gain_short_tax: float. Default None, optional
         :keyword cap_gain_long_tax: float. Default None, optional
         """
-        return self._dispatch('security_analytics', security_id=security_id, **kwargs)
+        return self._dispatch(
+            'security_analytics',
+            security_id=security_id,
+            **kwargs)
 
     def get_security_cash_flows(self, security_id, **kwargs):
         """
@@ -199,7 +210,10 @@ class _SyncFinXClient(_BaseClient):
         :keyword price: float. Default 100.0, optional
         :keyword shock_in_bp: int. Default None, optional
         """
-        return self._dispatch('security_cash_flows', security_id=security_id, **kwargs)
+        return self._dispatch(
+            'security_cash_flows',
+            security_id=security_id,
+            **kwargs)
 
     def get_curve(self, curve_name, currency, start_date, end_date=None, **kwargs):
         """
@@ -226,8 +240,10 @@ class _SyncFinXClient(_BaseClient):
             and api_method != 'list_api_functions' \
             and type(security_params) is list \
             and len(security_params) < 100
-        tasks = [self._executor.submit(self._dispatch, api_method, **security_param, **kwargs)
-                 for security_param in security_params]
+        tasks = [
+            self._executor.submit(self._dispatch, api_method, **security_param, **kwargs)
+            for security_param in security_params
+        ]
         return [task.result() for task in tasks]
 
     def batch_coverage_check(self, security_params, **kwargs):
@@ -322,7 +338,10 @@ class _AsyncFinXClient(_SyncFinXClient):
 
         :param security_id: string - ID of security of interest
         """
-        return await self._dispatch('coverage_check', security_id=security_id, **kwargs)
+        return await self._dispatch(
+            'coverage_check',
+            security_id=security_id,
+            **kwargs)
 
     async def get_security_reference_data(self, security_id, **kwargs):
         """
@@ -331,7 +350,10 @@ class _AsyncFinXClient(_SyncFinXClient):
         :param security_id: string
         :keyword as_of_date: string as YYYY-MM-DD. Default None, optional
         """
-        return await self._dispatch('security_reference', security_id=security_id, **kwargs)
+        return await self._dispatch(
+            'security_reference',
+            security_id=security_id,
+            **kwargs)
 
     async def get_security_analytics(self, security_id, **kwargs):
         """
@@ -348,7 +370,10 @@ class _AsyncFinXClient(_SyncFinXClient):
         :keyword cap_gain_short_tax: float. Default None, optional
         :keyword cap_gain_long_tax: float. Default None, optional
         """
-        return await self._dispatch('security_analytics', security_id=security_id, **kwargs)
+        return await self._dispatch(
+            'security_analytics',
+            security_id=security_id,
+            **kwargs)
 
     async def get_security_cash_flows(self, security_id, **kwargs):
         """
@@ -359,7 +384,10 @@ class _AsyncFinXClient(_SyncFinXClient):
         :keyword price: float. Default None, optional
         :keyword shock_in_bp: int. Default None, optional
         """
-        return await self._dispatch('security_cash_flows', security_id=security_id, **kwargs)
+        return await self._dispatch(
+            'security_cash_flows',
+            security_id=security_id,
+            **kwargs)
 
     async def _dispatch_batch(self, api_method, security_params, **kwargs):
         """
@@ -371,7 +399,10 @@ class _AsyncFinXClient(_SyncFinXClient):
         except:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
-        tasks = [self._dispatch(api_method, **security_param, **kwargs) for security_param in security_params]
+        tasks = [
+            self._dispatch(api_method, **security_param, **kwargs)
+            for security_param in security_params
+        ]
         return await asyncio.gather(*tasks)
 
     async def batch_coverage_check(self, security_params, **kwargs):
@@ -426,7 +457,7 @@ class _BaseSocketClient(_BaseClient):
         self.__api_key = self.get_api_key()
         self.__api_url = self.get_api_url()
         self.__auth_payload = json.dumps({'finx_api_key': self.__api_key})
-        self.__ws_url = f'ws{(kwargs.get("ssl", True) and "s") or ""}://{urlparse(self.__api_url).netloc}/ws/api/'
+        self.__ws_url = f'ws{"s" if kwargs.get("ssl", True) else ""}://{urlparse(self.__api_url).netloc}/ws/api/'
         self.is_authenticated = False
         self.blocking = kwargs.get('blocking', True)
         self._init_socket()
@@ -514,13 +545,22 @@ class _BaseSocketClient(_BaseClient):
             remaining_keys = cache_keys
             while len(remaining_keys) != 0:
                 sleep(0.01)
-                remaining_results = [self.cache.get(key[1], dict()).get(key[2], None) for key in remaining_keys]
+                remaining_results = [
+                    self.cache.get(key[1], dict()).get(key[2], None)
+                    for key in remaining_keys
+                ]
                 remaining_keys = [
                     remaining_keys[index] for index, value in enumerate(remaining_results)
                     if value is None
                 ]
-                results += [result for result in remaining_results if result is not None]
-            file_results = [value for value in results if type(value) is dict and value.get('filename') is not None]
+                results += [
+                    result for result in remaining_results
+                    if result is not None
+                ]
+            file_results = [
+                value for value in results
+                if type(value) is dict and value.get('filename') is not None
+            ]
             if any(file_results):
                 print('Downloading results...')
                 file_df = pd.read_csv(StringIO(
@@ -545,7 +585,10 @@ class _BaseSocketClient(_BaseClient):
                 print(f'Writing data to {output_file}')
                 pd.DataFrame(results).to_csv(output_file, index=False)
             if callable(callback):
-                return callback(results, **kwargs, cache_keys=cache_keys)
+                return callback(
+                    results,
+                    **kwargs,
+                    cache_keys=cache_keys)
             return results if len(results) > 1 else results[0] if len(results) > 0 else results
         except:
             print(f'Failed to find result/execute callback: {format_exc()}')
@@ -634,7 +677,10 @@ class _BaseSocketClient(_BaseClient):
             if len(cached_responses) == total_requests:
                 print(f'All {total_requests} requests found in cache')
                 if callable(callback):
-                    return callback(cached_responses, **kwargs, cache_keys=cache_keys)
+                    return callback(
+                        cached_responses,
+                        **kwargs,
+                        cache_keys=cache_keys)
                 return cached_responses
             print(f'{len(cached_responses)} out of {total_requests} requests found in cache')
             if getsizeof(outstanding_requests) > 1e6:
@@ -647,7 +693,10 @@ class _BaseSocketClient(_BaseClient):
             if cache_keys[0] is not None:
                 print('Request found in cache')
                 if callable(callback):
-                    return callback(cache_keys[0], **kwargs, cache_keys=cache_keys)
+                    return callback(
+                        cache_keys[0],
+                        **kwargs,
+                        cache_keys=cache_keys)
                 return cache_keys[0]
             cache_keys = [cache_keys]
         payload['cache_key'] = cache_keys if type(payload.get('batch_input')) is not str else []
