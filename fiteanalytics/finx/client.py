@@ -680,7 +680,7 @@ class _SocketFinXClient(_SyncFinXClient):
                 payload['batch_input'] = outstanding_requests
             payload['api_method'] = 'batch_' + api_method
             payload = {k: v for k, v in payload.items() if k in ['batch_input', 'api_method']}
-            payload.update(kwargs)
+            payload.update({k: v for k, v in kwargs.items() if k != 'request'})
         else:
             cache_keys = self.check_cache(
                 api_method, payload.get('security_id'), payload)
