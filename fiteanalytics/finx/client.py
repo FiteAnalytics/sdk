@@ -512,7 +512,9 @@ class _SocketFinXClient(_SyncFinXClient):
     def _download_file(self, file_result):
         response = requests.get(
             self.__api_url + 'batch-download/',
-            params={'filename': file_result['filename']}).content.decode('utf-8')
+            params={
+                'filename': file_result['filename'],
+                'bucket_name': file_result.get('bucket_name')}).content.decode('utf-8')
         if file_result.get('is_json'):
             response = json.loads(response)
         else:
@@ -678,6 +680,7 @@ class _SocketFinXClient(_SyncFinXClient):
                 payload['batch_input'] = outstanding_requests
             payload['api_method'] = 'batch_' + api_method
             payload = {k: v for k, v in payload.items() if k in ['batch_input', 'api_method']}
+            payload.update(kwargs)
         else:
             cache_keys = self.check_cache(
                 api_method, payload.get('security_id'), payload)
