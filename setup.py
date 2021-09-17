@@ -4,7 +4,7 @@ with open('requirements.txt') as requirements:
     setup(
         name='fiteanalytics',
         description='FinX API SDK',
-        version='2.1.6',
+        version='2.1.7',
         author='Fite Analytics LLC',
         author_email='info@fiteanalytics.com',
         classifiers=['License :: OSI Approved :: GNU Affero General Public License v3',],
