@@ -4,10 +4,12 @@ Author: Jake Mathai, Dick Mule
 Purpose: Client classes for exposing the FinX API endpoints
 """
 import os
-import copy
 import json
+import types
+import aiohttp
 import asyncio
 import requests
+import functools
 import pandas as pd
 
 from lru import LRU
@@ -18,10 +20,8 @@ from io import StringIO
 from sys import getsizeof
 from threading import Thread
 from traceback import format_exc
-from aiohttp import ClientSession
 from urllib.parse import urlparse
 from websocket import WebSocketApp, enableTrace
-from concurrent.futures import ThreadPoolExecutor
 
 
 enableTrace(False)
@@ -63,20 +63,49 @@ f.recall_cache_value(x)
 """
 
 
-# def _get_cache_key(params):
-#     key = ''
-#     security_id = params.get('security_id')
-#     if security_id is not None:
-#         key += security_id + ','
-#     api_method = params.get('api_method')
-#     if api_method is not None:
-#         key += api_method + ','
-#     return key + ','.join(
-#         [f'{key}:{params[key]}' for key in sorted(params.keys())
-#          if key not in ['security_id', 'api_method', 'input_file', 'output_file']])
+class Hybrid:
+
+    def __init__(self, func):
+        self._func = func
+        self._func_name = func.__name__
+        self._func_path = func.__name__
+        self._func_class = None
+        functools.update_wrapper(self, func)
+
+    def __get__(self, obj, objtype):
+        """Support instance methods."""
+        self._func_class = obj
+        return self
+
+    def __call__(self, *args, **kwargs):
+        loop = asyncio.get_event_loop()
+        return (loop.create_task if loop.is_running() else loop.run_until_complete)(self.run_func(*args, **kwargs))
+
+    async def run_func(self, *args, **kwargs):
+        if self._func_class is not None:
+            args = (self._func_class,) + args
+        return await self._func(*args, **kwargs)
+
+    async def run_async(self, *args, **kwargs):
+        return await self.run_func(*args, **kwargs)
 
 
-class _SyncFinXClient:
+class SessionManager:
+    async def __aenter__(self):
+        self._session = aiohttp.ClientSession()
+        return self
+
+    async def __aexit__(self, *err):
+        await self._session.close()
+        self._session = None
+
+    async def fetch(self, url, **kwargs):
+        async with self._session.post(url, data=kwargs) as resp:
+            resp.raise_for_status()
+            return await resp.json()
+
+
+class _FinXClient:
 
     def __init__(self, **kwargs):
         """
@@ -90,9 +119,18 @@ class _SyncFinXClient:
         self.__api_url = kwargs.get('finx_api_endpoint') or os.environ.get('FINX_API_ENDPOINT') or DEFAULT_API_URL
         self.cache_size = kwargs.get('cache_size') or 100000
         self.cache = LRU(self.cache_size)
-        self._session = requests.session() if kwargs.get('session', True) else None
-        self._executor = ThreadPoolExecutor() if kwargs.get('executor', True) else None
         self.cache_method_size = dict(security_analytics=3, cash_flows=1, reference_data=3)
+        self.timeout = kwargs.get('timeout', 100)
+        if not kwargs.get('no_init'):
+            self._init_api_functions(**kwargs)
+
+    async def __aenter__(self):
+        self._session = aiohttp.ClientSession()
+        return self
+
+    async def __aexit__(self, *err):
+        await self._session.close()
+        self._session = None
 
     def get_api_key(self):
         return self.__api_key
@@ -107,23 +145,40 @@ class _SyncFinXClient:
 
     def check_cache(self, api_method, security_id=None, params=None):
         params = dict() if params is None else params
-        cache_key = ''
-        cache_key += f'{security_id}' if security_id else ''
-        cache_key += f'{api_method}'
+        cache_key = (f'{security_id}:' if security_id else '') + f'{api_method}'
         params_key = ','.join(
             [f'{key}:{params[key]}' for key in sorted(params.keys())
              if key not in ['security_id', 'api_method', 'input_file', 'output_file', 'block']])
         params_key = params_key if len(params_key) > 0 else 'NONE'
-        cached_value = self.cache.get(cache_key)
+        cached_value = self.cache.get(cache_key, dict()).get(params_key)
         if cached_value is None:
             self.cache[cache_key] = LRU(1) if security_id is None else LRU(self.cache_method_size.get(api_method, 1))
             self.cache[cache_key][params_key] = None
-        else:
-            cached_value = cached_value.get(params_key)
         return cached_value, cache_key, params_key
 
-    def _dispatch(self, api_method, **kwargs):
-        assert self._session is not None
+    def _init_api_functions(self, **kwargs):
+        """
+        Add all valid API Methods to Class
+        """
+        all_functions = self._dispatch('list_api_functions', **kwargs)
+        all_functions = all_functions['data'] if isinstance(all_functions, dict) else all_functions
+        for function in all_functions:
+            name, required, optional = [function[k] for k in ["name", "required", "optional"]]
+            required_str = (", ".join(required) + ", ") if len(required) > 0 else ""
+            optional_str = (", ".join([f'{k}={v}' for k, v in optional.items()]) + ", ") if optional is not None else ""
+            required_zip = (", ".join([f"{x}={x}" for x in required]) + ", ") if len(required) > 0 else ""
+            optional_zip = (", ".join([f"{x}={x}" for x in optional.keys()]) + ", ") if optional is not None else ""
+            for batch in ["batch_", ""]:
+                exec(f'def {batch}{name}(self, {required_str}{optional_str}**kwargs):'
+                     f'    return self._{batch}dispatch("{f"{name}"}", {required_zip}{optional_zip}**kwargs)',
+                     locals())
+                self.__dict__[f'{name}'] = types.MethodType(locals()[f'{batch}{name}'], self)
+
+    @Hybrid
+    async def _dispatch(self, api_method, **kwargs):
+        """
+        Abstract request dispatch function
+        """
         request_body = {
             'finx_api_key': self.__api_key,
             'api_method': api_method,
@@ -133,225 +188,18 @@ class _SyncFinXClient:
                 key: value for key, value in kwargs.items()
                 if key != 'finx_api_key' and key != 'api_method'
             })
-        if api_method == 'security_analytics':
-            request_body['use_kalotay_analytics'] = False
         cached_response, cache_key, params_key = self.check_cache(api_method, kwargs.get('security_id'), request_body)
         if cached_response is not None:
             print('Found in cache')
             return cached_response
-        request_body['finx_api_key'] = self.__api_key
-        data = self._session.post(self.__api_url, data=request_body).json()
-        error = data.get('error')
-        if error is not None:
-            print(f'API returned error: {error}')
-            return data
-        self.cache[cache_key][params_key] = data
-        return data
-
-    def list_api_functions(self, **kwargs):
-        """
-        List API methods with parameter specifications
-        """
-        return self._dispatch('list_api_functions', **kwargs)
-
-    def coverage_check(self, security_id, **kwargs):
-        """
-        Security coverage check
-
-        :param security_id: string - ID of security of interest
-        """
-        return self._dispatch('coverage_check', security_id=security_id, **kwargs)
-
-    def get_security_reference_data(self, security_id, **kwargs):
-        """
-        Security reference function
-
-        :param security_id: string
-        :keyword as_of_date: string as YYYY-MM-DD. Default None, optional
-        """
-        return self._dispatch('security_reference', security_id=security_id, **kwargs)
-
-    def get_security_analytics(self, security_id, **kwargs):
-        """
-        Security analytics function
-
-        :param security_id: string
-        :keyword as_of_date: string as YYYY-MM-DD. Default None, optional
-        :keyword price: float Default None, optional
-        :keyword volatility: float. Default None, optional
-        :keyword yield_shift: int. Default None, optional
-        :keyword shock_in_bp: int. Default None, optional
-        :keyword horizon_months: uint. Default None, optional
-        :keyword income_tax: float. Default None, optional
-        :keyword cap_gain_short_tax: float. Default None, optional
-        :keyword cap_gain_long_tax: float. Default None, optional
-        """
-        return self._dispatch('security_analytics', security_id=security_id, **kwargs)
-
-    def get_security_cash_flows(self, security_id, **kwargs):
-        """
-        Security cash flows function
-
-        :param security_id: string
-        :keyword as_of_date: string as YYYY-MM-DD. Default None, optional
-        :keyword price: float. Default 100.0, optional
-        :keyword shock_in_bp: int. Default None, optional
-        """
-        return self._dispatch('security_cash_flows', security_id=security_id, **kwargs)
-
-    def get_curve(self, curve_name, currency, start_date, end_date=None, **kwargs):
-        """
-        Yield curve function
-
-       :param curve_name: string
-       :param currency: string
-       :param start_date: string as YYYY-MM-DD
-       :keyword end_date: string as YYYY-MM-DD. Default None, optional
-       """
-        return self._dispatch(
-            'get_curve',
-            curve_name=curve_name,
-            currency=currency,
-            start_date=start_date,
-            end_date=end_date if end_date is not None else start_date,
-            **kwargs)
-
-    def _dispatch_batch(self, api_method, security_params, **kwargs):
-        """
-        Abstract batch request dispatch function. Issues a request for each input
-        """
-        assert self._executor is not None \
-               and api_method != 'list_api_functions' \
-               and type(security_params) is list \
-               and len(security_params) < 100
-        tasks = [self._executor.submit(self._dispatch, api_method, **security_param, **kwargs)
-                 for security_param in security_params]
-        return [task.result() for task in tasks]
-
-    def batch_coverage_check(self, security_params, **kwargs):
-        """
-        Check coverage for batch of securities
-        :param security_params: List of dicts containing the security_id and keyword arguments for each security
-                function invocation
-        """
-        return self._dispatch_batch('coverage_check', security_params, **kwargs)
-
-    def batch_security_reference(self, security_params, **kwargs):
-        """
-        Get security reference data for batch of securities
-        :param security_params: List of dicts containing the security_id and keyword arguments for each security
-                function invocation
-        """
-        return self._dispatch_batch('security_reference', security_params, **kwargs)
-
-    def batch_security_analytics(self, security_params, **kwargs):
-        """
-        Get security analytics for batch of securities
-        :param security_params: List of dicts containing the security_id and keyword arguments for each security
-                function invocation
-        """
-        return self._dispatch_batch('security_analytics', security_params, **kwargs)
-
-    def batch_security_cash_flows(self, security_params, **kwargs):
-        """
-        Get security cash flows for batch of securities
-        :param security_params: List of dicts containing the security_id and keyword arguments for each security
-                function invocation
-        """
-        return self._dispatch_batch('security_cash_flows', security_params, **kwargs)
-
-
-class _AsyncFinXClient(_SyncFinXClient):
-
-    def __init__(self, **kwargs):
-        """
-        Client constructor - supports keywords finx_api_key and finx_api_endpoint,
-        or FINX_API_KEY and FINX_API_ENDPOINT environment variables
-        """
-        super().__init__(**kwargs, session=False, executor=False)
-        self.__api_key = self.get_api_key()
-        self.__api_url = self.get_api_url()
-
-    async def _dispatch(self, api_method, **kwargs):
-        """
-        Abstract request dispatch function
-        """
-        if self._session is None:
-            self._session = ClientSession()
-        request_body = {
-            'finx_api_key': self.__api_key,
-            'api_method': api_method,
-        }
-        if any(kwargs):
-            request_body.update({
-                key: value for key, value in kwargs.items()
-                if key != 'finx_api_key' and key != 'api_method' and value is not None
-            })
-        if api_method == 'security_analytics':
-            request_body['use_kalotay_analytics'] = False
-        cached_response = self.check_cache()
-        if cached_response is not None:
-            print('Request found in cache')
-            return cached_response
-        async with self._session.post(self.__api_url, data=request_body) as response:
-            data = await response.json()
+        async with SessionManager() as session:
+            data = await session.fetch(self.__api_url, **request_body)
             error = data.get('error')
             if error is not None:
                 print(f'API returned error: {error}')
-                return response
+                return error
             self.cache[cache_key] = data
             return data
-
-    async def list_api_functions(self, **kwargs):
-        """
-        List API methods with parameter specifications
-        """
-        return await self._dispatch('list_api_functions', **kwargs)
-
-    async def coverage_check(self, security_id, **kwargs):
-        """
-        Security coverage check
-
-        :param security_id: string - ID of security of interest
-        """
-        return await self._dispatch('coverage_check', security_id=security_id, **kwargs)
-
-    async def get_security_reference_data(self, security_id, **kwargs):
-        """
-        Security reference function
-
-        :param security_id: string
-        :keyword as_of_date: string as YYYY-MM-DD. Default None, optional
-        """
-        return await self._dispatch('security_reference', security_id=security_id, **kwargs)
-
-    async def get_security_analytics(self, security_id, **kwargs):
-        """
-        Security analytics function
-
-        :param security_id: string
-        :keyword as_of_date: string as YYYY-MM-DD. Default None, optional
-        :keyword price: float. Default None, optional
-        :keyword volatility: float. Default None, optional
-        :keyword yield_shift: int. Default None, optional
-        :keyword shock_in_bp: int. Default None, optional
-        :keyword horizon_months: uint. Default None, optional
-        :keyword income_tax: float. Default None, optional
-        :keyword cap_gain_short_tax: float. Default None, optional
-        :keyword cap_gain_long_tax: float. Default None, optional
-        """
-        return await self._dispatch('security_analytics', security_id=security_id, **kwargs)
-
-    async def get_security_cash_flows(self, security_id, **kwargs):
-        """
-        Security cash flows function
-
-        :param security_id: string
-        :keyword as_of_date: string as YYYY-MM-DD. Default None, optional
-        :keyword price: float. Default None, optional
-        :keyword shock_in_bp: int. Default None, optional
-        """
-        return await self._dispatch('security_cash_flows', security_id=security_id, **kwargs)
 
     async def _dispatch_batch(self, api_method, security_params, **kwargs):
         """
@@ -368,38 +216,6 @@ class _AsyncFinXClient(_SyncFinXClient):
         tasks = [self._dispatch(api_method, **security_param, **kwargs) for security_param in security_params]
         return await asyncio.gather(*tasks)
 
-    async def batch_coverage_check(self, security_params, **kwargs):
-        """
-        Check coverage for batch of securities
-        :param security_params: (list) List of dicts containing the security_id and keyword arguments for each security
-                function invocation
-        """
-        return await self._dispatch_batch('coverage_check', security_params, **kwargs)
-
-    async def batch_security_reference(self, security_params, **kwargs):
-        """
-        Get security reference data for batch of securities
-        :param security_params: (list) List of dicts containing the security_id and keyword arguments for each security
-                function invocation
-        """
-        return await self._dispatch_batch('security_reference', security_params, **kwargs)
-
-    async def batch_security_analytics(self, security_params, **kwargs):
-        """
-        Get security analytics for batch of securities
-        :param security_params: (list) List of dicts containing the security_id and keyword arguments for each security
-                function invocation
-        """
-        return await self._dispatch_batch('security_analytics', security_params, **kwargs)
-
-    async def batch_security_cash_flows(self, security_params, **kwargs):
-        """
-        Get security cash flows for batch of securities
-        :param security_params: (list) List of dicts containing the security_id and keyword arguments for each security
-                function invocation
-        """
-        return await self._dispatch_batch('security_cash_flows', security_params, **kwargs)
-
 
 class _WebSocket(WebSocketApp):
 
@@ -407,20 +223,21 @@ class _WebSocket(WebSocketApp):
         return self.sock is not None and self.sock.connected
 
 
-class _SocketFinXClient(_SyncFinXClient):
+class _SocketFinXClient(_FinXClient):
 
     def __init__(self, **kwargs):
         """
         Client constructor - supports keywords finx_api_key and finx_api_endpoint,
         or FINX_API_KEY and FINX_API_ENDPOINT environment variables
         """
-        super().__init__(**kwargs, session=False)
+        super().__init__(**kwargs, no_init=True)
         self.__api_key = super().get_api_key()
         self.__api_url = super().get_api_url()
         self.ssl = kwargs.get('ssl', False)
         self.is_authenticated = False
         self.blocking = kwargs.get('blocking', True)
         self._init_socket()
+        _FinXClient._init_api_functions(self, **kwargs)
 
     def authenticate(self):
         print('Authenticating...')
@@ -473,6 +290,7 @@ class _SocketFinXClient(_SyncFinXClient):
 
         def on_message(socket, message):
             try:
+                # print(f'RECEIVED MESSAGE: {message}')
                 message = json.loads(message)
                 if message.get('is_authenticated'):
                     print('Successfully authenticated')
@@ -493,11 +311,11 @@ class _SocketFinXClient(_SyncFinXClient):
                 return_iterable = type(data) is list and type(data[0]) is dict
                 for key in cache_keys:
                     value = next(
-                        (item for item in data if item.get("security_id") in key[1]),
-                        None) if return_iterable else data
+                        (item for item in data if item.get("security_id", '') in key[1]),
+                        None) if return_iterable and key[0] is not None else data
                     self.cache[key[1]][key[2]] = value
             except:
-                print(f'Socket on_message error: {format_exc()}')
+                print(f'Socket on_message error: {format_exc()}, {message}')
             return None
 
         def on_error(socket, error):
@@ -511,14 +329,14 @@ class _SocketFinXClient(_SyncFinXClient):
 
     def _download_file(self, file_result):
         response = requests.get(
-            self.__api_url + 'batch-download/',
+            self.__api_url + 'api/batch-download/',
             params={
                 'filename': file_result['filename'],
                 'bucket_name': file_result.get('bucket_name')}).content.decode('utf-8')
         if file_result.get('is_json'):
             response = json.loads(response)
         else:
-            response = pd.read_csv(StringIO(response))
+            response = pd.read_csv(StringIO(response), engine='python')
         return response
 
     def _listen_for_results(self, cache_keys, callback=None, **kwargs):
@@ -647,8 +465,6 @@ class _SocketFinXClient(_SyncFinXClient):
                 key: value for key, value in kwargs.items()
                 if key != 'finx_api_key' and key != 'api_method'
             })
-        if 'security_analytics' in api_method:
-            payload['use_kalotay_analytics'] = False
         payload_size = self._get_size(payload)
         chunk_payload = payload_size > 1e5
         # print(f"payload size {payload_size}, need to chunk payload: {chunk_payload}")
@@ -656,8 +472,6 @@ class _SocketFinXClient(_SyncFinXClient):
             batch_input = kwargs.pop('batch_input', None)
             base_cache_payload = kwargs.copy()
             base_cache_payload['api_method'] = api_method
-            if 'security_analytics' in api_method:
-                base_cache_payload['use_kalotay_analytics'] = False
             if not chunk_payload:
                 cache_keys, cached_responses, outstanding_requests = self._parse_batch_input(
                     batch_input,
@@ -699,7 +513,7 @@ class _SocketFinXClient(_SyncFinXClient):
             self._executor.submit(self._listen_for_results, cache_keys, callback, **kwargs)
         return cache_keys
 
-    def _dispatch_batch(self, batch_method, security_params=None, input_file=None, output_file=None, **kwargs):
+    def _batch_dispatch(self, batch_method, security_params=None, input_file=None, output_file=None, **kwargs):
         """
         Abstract batch request dispatch function. Issues a single request containing all inputs. Must either give the
         inputs directly in security_params or specify absolute path to input_file. Specify the parameters & keywords and
@@ -728,30 +542,6 @@ class _SocketFinXClient(_SyncFinXClient):
             output_file=output_file,
             is_batch=True)
 
-    def batch_coverage_check(self, security_params=None, input_file=None, output_file=None, **kwargs):
-        """
-        Check coverage for batch of securities
-        """
-        return self._dispatch_batch('coverage_check', security_params, input_file, output_file, **kwargs)
-
-    def batch_security_reference(self, security_params=None, input_file=None, output_file=None, **kwargs):
-        """
-        Get security reference data for batch of securities
-        """
-        return self._dispatch_batch('security_reference', security_params, input_file, output_file, **kwargs)
-
-    def batch_security_analytics(self, security_params=None, input_file=None, output_file=None, **kwargs):
-        """
-        Get security analytics for batch of securities
-        """
-        return self._dispatch_batch('security_analytics', security_params, input_file, output_file, **kwargs)
-
-    def batch_security_cash_flows(self, security_params=None, input_file=None, output_file=None, **kwargs):
-        """
-        Get security cash flows for batch of securities
-        """
-        return self._dispatch_batch('security_cash_flows', security_params, input_file, output_file, **kwargs)
-
 
 def FinXClient(kind='sync', **kwargs):
     """
@@ -759,8 +549,4 @@ def FinXClient(kind='sync', **kwargs):
 
     :param kind: string - 'socket' for websocket client, 'async' for async client. Default 'sync', optional
     """
-    if kind == 'socket':
-        return _SocketFinXClient(**kwargs)
-    if kind == 'async':
-        return _AsyncFinXClient(**kwargs)
-    return _SyncFinXClient(**kwargs)
+    return _SocketFinXClient(**kwargs) if kind == 'socket' else _FinXClient(**kwargs)
