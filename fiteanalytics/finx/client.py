@@ -360,12 +360,12 @@ class _SocketFinXClient(_FinXClient):
                 results += [x for x in remaining_results if x is not None]
             is_list = isinstance(results, list)
             contains_dict = False if not is_list else isinstance(results[0], dict)
-            results = pd.DataFrame(
-                results).drop_duplicates().to_dict(
-                orient='records') if is_list and contains_dict else results
             file_results = [
                 value for value in results
                 if type(value) is dict and value.get('filename') is not None]
+            results = pd.DataFrame(
+                results).drop_duplicates().to_dict(
+                orient='records') if is_list and contains_dict and len(file_results) > 0 else results
             if any(file_results):
                 print('Downloading results...')
                 all_files_results = [
