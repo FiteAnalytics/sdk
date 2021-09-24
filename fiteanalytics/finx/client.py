@@ -360,17 +360,15 @@ class _SocketFinXClient(_FinXClient):
                 results += [x for x in remaining_results if x is not None]
             is_list = isinstance(results, list)
             contains_dict = False if not is_list else isinstance(results[0], dict)
-            file_results = [
-                value for value in results
-                if type(value) is dict and value.get('filename') is not None]
+            file_return = (results[0] if is_list and contains_dict else dict()).get('filename') is not None
             results = pd.DataFrame(
                 results).drop_duplicates().to_dict(
-                orient='records') if is_list and contains_dict and len(file_results) > 0 else results
-            if any(file_results):
+                orient='records') if is_list and contains_dict and file_return else results
+            if file_return:
                 print('Downloading results...')
                 all_files_results = [
                     self._download_file(file_result) if file_result.get('filename') else None
-                    for file_result in file_results]
+                    for file_result in results]
                 for index, file_df in enumerate(all_files_results):
                     if file_df is None:
                         continue
@@ -383,7 +381,6 @@ class _SocketFinXClient(_FinXClient):
                         self.cache[cache_keys[index][1]][cache_keys[index][2]] = file_df
                         file_cache_results = {}
                     results[index] = file_df
-                    print(f'Updating cache with file data ...')
                     for key, value in file_cache_results.items():
                         key = json.loads(key)
                         self.cache[key[1]][key[2]] = value
