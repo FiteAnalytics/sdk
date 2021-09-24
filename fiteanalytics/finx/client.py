@@ -372,6 +372,9 @@ class _SocketFinXClient(_FinXClient):
                 for index, file_df in enumerate(all_files_results):
                     if file_df is None:
                         continue
+                    if 'filename' in file_df:
+                        file_df['result'] = [self._download_file(x) for x in file_df.to_dict(orient='records')]
+                        file_df = file_df[['security_id', 'result', 'cache_key']]
                     if 'security_id' in file_df:
                         file_cache_results = dict(zip(
                             file_df['cache_key'].tolist(),
