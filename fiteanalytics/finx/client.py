@@ -162,17 +162,23 @@ class _FinXClient:
         """
         all_functions = self._dispatch('list_api_functions', **kwargs)
         all_functions = all_functions['data'] if isinstance(all_functions, dict) else all_functions
+        batch_inputs = 'batch_params=None, input_file=None, output_file=None, '
+        batch_params = 'batch_params=batch_params, input_file=input_file, output_file=output_file, '
         for function in all_functions:
             name, required, optional = [function[k] for k in ["name", "required", "optional"]]
             required_str = (", ".join(required) + ", ") if len(required) > 0 else ""
             optional_str = (", ".join([f'{k}={v}' for k, v in optional.items()]) + ", ") if optional is not None else ""
             required_zip = (", ".join([f"{x}={x}" for x in required]) + ", ") if len(required) > 0 else ""
             optional_zip = (", ".join([f"{x}={x}" for x in optional.keys()]) + ", ") if optional is not None else ""
-            for batch in ["batch_", ""]:
-                exec(f'def {batch}{name}(self, {required_str}{optional_str}**kwargs):'
-                     f'    return self._{batch}dispatch("{f"{name}"}", {required_zip}{optional_zip}**kwargs)',
+            for index, batch in enumerate(["batch_", ""]):
+                inputs = [batch_inputs, f"{required_str}{optional_str}"][index]
+                params = [batch_params, f"{required_zip}{optional_zip}"][index]
+                # print(f'def {batch}{name}(self, {inputs}**kwargs):\n'
+                #       f'    return self._{batch}dispatch("{f"{name}"}", {params}**kwargs)')
+                exec(f'def {batch}{name}(self, {inputs}**kwargs):\n'
+                     f'    return self._{batch}dispatch("{f"{name}"}", {params}**kwargs)',
                      locals())
-                self.__dict__[f'{name}'] = types.MethodType(locals()[f'{batch}{name}'], self)
+                self.__dict__[f'{batch}{name}'] = types.MethodType(locals()[f'{batch}{name}'], self)
 
     @Hybrid
     async def _dispatch(self, api_method, **kwargs):
@@ -352,8 +358,14 @@ class _SocketFinXClient(_FinXClient):
                 remaining_results = [self.cache.get(key[1], dict()).get(key[2], None) for key in remaining_keys]
                 remaining_keys = [remaining_keys[index] for index, value in enumerate(remaining_results) if value is None]
                 results += [x for x in remaining_results if x is not None]
-            file_results = [value for value in results
-                            if type(value) is dict and value.get('filename') is not None]
+            is_list = isinstance(results, list)
+            contains_dict = False if not is_list else isinstance(results[0], dict)
+            results = pd.DataFrame(
+                results).drop_duplicates().to_dict(
+                orient='records') if is_list and contains_dict else results
+            file_results = [
+                value for value in results
+                if type(value) is dict and value.get('filename') is not None]
             if any(file_results):
                 print('Downloading results...')
                 all_files_results = [
@@ -364,17 +376,17 @@ class _SocketFinXClient(_FinXClient):
                         continue
                     if 'security_id' in file_df:
                         file_cache_results = dict(zip(
-                            file_df['security_id'].map(
-                                lambda x: next((pair[0] for pair in file_results if x in pair[0]), None)),
-                            file_df.to_dict(orient='records')))
+                            file_df['cache_key'].tolist(),
+                            file_df.to_dict(orient='records')
+                        ))
                     else:
                         self.cache[cache_keys[index][1]][cache_keys[index][2]] = file_df
                         file_cache_results = {}
                     results[index] = file_df
-                    print('Updating cache with file data...')
+                    print(f'Updating cache with file data ...')
                     for key, value in file_cache_results.items():
-                        print(f'setting file cache results[{key}] w value {value}')
-                        self.cache[key] = value
+                        key = json.loads(key)
+                        self.cache[key[1]][key[2]] = value
             output_file = kwargs.get('output_file')
             if output_file is not None and len(results) > 0 and type(results[0]) in [list, dict]:
                 print(f'Writing data to {output_file}')
@@ -467,8 +479,9 @@ class _SocketFinXClient(_FinXClient):
             })
         payload_size = self._get_size(payload)
         chunk_payload = payload_size > 1e5
+        is_batch = kwargs.pop('is_batch', False)
         # print(f"payload size {payload_size}, need to chunk payload: {chunk_payload}")
-        if kwargs.pop('is_batch', False) or chunk_payload:
+        if is_batch or chunk_payload:
             batch_input = kwargs.pop('batch_input', None)
             base_cache_payload = kwargs.copy()
             base_cache_payload['api_method'] = api_method
@@ -495,6 +508,7 @@ class _SocketFinXClient(_FinXClient):
             payload['api_method'] = 'batch_' + api_method
             payload = {k: v for k, v in payload.items() if k in ['batch_input', 'api_method']}
             payload.update({k: v for k, v in kwargs.items() if k != 'request'})
+            payload['run_batch'] = is_batch
         else:
             cache_keys = self.check_cache(
                 api_method, payload.get('security_id'), payload)
@@ -513,7 +527,7 @@ class _SocketFinXClient(_FinXClient):
             self._executor.submit(self._listen_for_results, cache_keys, callback, **kwargs)
         return cache_keys
 
-    def _batch_dispatch(self, batch_method, security_params=None, input_file=None, output_file=None, **kwargs):
+    def _batch_dispatch(self, batch_method, batch_params=None, input_file=None, output_file=None, **kwargs):
         """
         Abstract batch request dispatch function. Issues a single request containing all inputs. Must either give the
         inputs directly in security_params or specify absolute path to input_file. Specify the parameters & keywords and
@@ -533,10 +547,10 @@ class _SocketFinXClient(_FinXClient):
         :keyword blocking: bool - block main thread until result arrives and return the value.
                   Default is object's configured default, optional
         """
-        assert batch_method != 'list_api_functions' and (security_params or input_file)
+        assert batch_method != 'list_api_functions' and (batch_params or input_file)
         return self._dispatch(
             batch_method,
-            batch_input=security_params or input_file,
+            batch_input=batch_params or input_file,
             **kwargs,
             input_file=input_file,
             output_file=output_file,
