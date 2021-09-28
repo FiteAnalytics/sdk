@@ -351,42 +351,37 @@ class _SocketFinXClient(_FinXClient):
         if callback specified in a function call
         """
         try:
-            results = []
             remaining_keys = cache_keys
             while len(remaining_keys) != 0:
                 sleep(0.01)
                 remaining_results = [self.cache.get(key[1], dict()).get(key[2], None) for key in remaining_keys]
-                remaining_keys = [remaining_keys[index] for index, value in enumerate(remaining_results) if value is None]
-                results += [x for x in remaining_results if x is not None]
-            is_list = isinstance(results, list)
-            contains_dict = False if not is_list else isinstance(results[0], dict)
-            file_return = (results[0] if is_list and contains_dict else dict()).get('filename') is not None
-            results = pd.DataFrame(
-                results).drop_duplicates().to_dict(
-                orient='records') if is_list and contains_dict and file_return else results
-            if file_return:
+                remaining_keys = [remaining_keys[i] for i, value in enumerate(remaining_results) if value is None]
+            file_results = []
+            results = [self.cache.get(key[1], dict()).get(key[2], None) for key in cache_keys]
+            for i, result in enumerate(results):
+                if not isinstance(result, dict):
+                    continue
+                if result.get('filename'):
+                    file_results += [[i, result]]
+            if len(file_results) > 0:
                 print('Downloading results...')
-                all_files_results = [
-                    self._download_file(file_result) if file_result.get('filename') else None
-                    for file_result in results]
-                for index, file_df in enumerate(all_files_results):
-                    if file_df is None:
-                        continue
-                    if 'filename' in file_df:
-                        file_df['result'] = [self._download_file(x) for x in file_df.to_dict(orient='records')]
-                        file_df = file_df[['security_id', 'result', 'cache_key']]
-                    if 'security_id' in file_df:
-                        file_cache_results = dict(zip(
-                            file_df['cache_key'].tolist(),
-                            file_df.to_dict(orient='records')
-                        ))
-                    else:
-                        self.cache[cache_keys[index][1]][cache_keys[index][2]] = file_df
-                        file_cache_results = {}
-                    results[index] = file_df
-                    for key, value in file_cache_results.items():
-                        key = json.loads(key)
-                        self.cache[key[1]][key[2]] = value
+                files_to_download = [
+                    dict(s) for s in set(
+                        frozenset(d.items())
+                        for d in list(map(lambda x: x[1], file_results)))]
+                downloaded_files = dict()
+                for file in files_to_download:
+                    downloaded_files[file['filename']] = self._download_file(file)
+                for index, file_result in file_results:
+                    file_df = downloaded_files[file_result['filename']]
+                    matched_result = file_df.loc[
+                        file_df['cache_key'].map(lambda x: json.loads(x) == list(cache_keys[index]))
+                    ].to_dict(orient='records')[0]
+                    if 'filename' in matched_result:
+                        matched_result['result'] = self._download_file(matched_result)
+                        matched_result = {k: matched_result[k] for k in ['security_id', 'result', 'cache_key']}
+                    self.cache[cache_keys[index][1]][cache_keys[index][2]] = matched_result
+                    results[index] = matched_result
             output_file = kwargs.get('output_file')
             if output_file is not None and len(results) > 0 and type(results[0]) in [list, dict]:
                 print(f'Writing data to {output_file}')
@@ -414,7 +409,6 @@ class _SocketFinXClient(_FinXClient):
         cached_responses = batch_input_df.loc[
             batch_input_df['cached_responses'].notnull()]['cached_responses'].tolist()
         outstanding_requests = batch_input_df.loc[batch_input_df['cached_responses'].isnull()]
-#         outstanding_requests.drop(['cache_keys', 'cached_responses'], axis=1, inplace=True)
         return cache_keys, cached_responses, outstanding_requests.to_dict(orient='records')
 
     def _upload_batch_file(self, batch_input):
@@ -518,7 +512,7 @@ class _SocketFinXClient(_FinXClient):
                     return callback(cache_keys[0], **kwargs, cache_keys=cache_keys)
                 return cache_keys[0]
             cache_keys = [cache_keys]
-        payload['cache_key'] = cache_keys# if not isinstance(payload.get('batch_input'), str) else []
+        payload['cache_key'] = [x for x in cache_keys if x[0] is None]
         self._socket.send(json.dumps(payload))
         blocking = kwargs.get('blocking', self.blocking)
         if blocking:
