@@ -374,9 +374,12 @@ class _SocketFinXClient(_FinXClient):
                     downloaded_files[file['filename']] = self._download_file(file)
                 for index, file_result in file_results:
                     file_df = downloaded_files[file_result['filename']]
-                    matched_result = file_df.loc[
-                        file_df['cache_key'].map(lambda x: json.loads(x) == list(cache_keys[index]))
-                    ].to_dict(orient='records')[0]
+                    if 'cache_key' in file_df:
+                        matched_result = file_df.loc[
+                            file_df['cache_key'].map(lambda x: json.loads(x) == list(cache_keys[index]))
+                        ].to_dict(orient='records')[0]
+                    else:
+                        matched_result = file_df
                     if 'filename' in matched_result:
                         matched_result['result'] = self._download_file(matched_result)
                         matched_result = {k: matched_result[k] for k in ['security_id', 'result', 'cache_key']}
