@@ -145,10 +145,11 @@ class _FinXClient:
 
     def check_cache(self, api_method, security_id=None, params=None):
         params = dict() if params is None else params
-        cache_key = (f'{security_id}:' if security_id else '') + f'{api_method}'
+        as_of_date = params.get('as_of_date')
+        cache_key = f'{f"{security_id}:{as_of_date}:" if security_id else ""}{api_method}'
         params_key = ','.join(
             [f'{key}:{params[key]}' for key in sorted(params.keys())
-             if key not in ['security_id', 'api_method', 'input_file', 'output_file', 'block']])
+             if key not in ['security_id', 'as_of_date', 'api_method', 'input_file', 'output_file', 'block']])
         params_key = params_key if len(params_key) > 0 else 'NONE'
         cached_value = self.cache.get(cache_key, dict()).get(params_key)
         if cached_value is None:
