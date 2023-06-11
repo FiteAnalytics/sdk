@@ -3,7 +3,9 @@ title: APIs
 tags: technology, documentation
 ---
 
-# Fite Analytics Software Development Kit (SDK)
+# DEPRECATED DO NOT USE #
+
+# DEPRECATED - Fite Analytics Software Development Kit (SDK)
 
 Fite Analytics offers a free, public, RESTful API with complementary SDK to demo our services.
 Our API currently utilizes API keys for authentication.
